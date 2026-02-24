@@ -49,10 +49,15 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableN
         }
     }, [open]);
 
-    const channels = [
+    const pushChannels = [
+        isAdmin ? 'admin' : null,
+        userId ? `user-${userId}` : null,
+        publicToken ? `public-${publicToken}` : null,
+    ].filter(Boolean);
+
+    const echoChannels = [
         isAdmin ? 'admin.chat-requests' : null,
         userId ? `user.${userId}` : null,
-        publicToken ? `public-${publicToken}` : null,
         publicToken ? `public-chat.${publicToken}` : null,
     ].filter(Boolean);
 
@@ -120,7 +125,7 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableN
                             <button
                                 type="button"
                                 onClick={async () => {
-                                    const targetChannel = channels[0];
+                                    const targetChannel = pushChannels[0];
                                     if (!targetChannel) return;
                                     setTestStatus('sending');
                                     setTestMessage('');
@@ -176,12 +181,22 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableN
                             <Badge label="SW scope" value={swScope} tone="slate" />
                         </div>
                     )}
-                    <div className="text-xs font-semibold text-slate-100">Canales esperados</div>
+                    <div className="text-xs font-semibold text-slate-100">Canales Push</div>
                     <div className="flex flex-wrap gap-2">
-                        {channels.length === 0 ? (
+                        {pushChannels.length === 0 ? (
                             <Badge label="Canal" value="ninguno" tone="rose" />
                         ) : (
-                            channels.map((channel) => (
+                            pushChannels.map((channel) => (
+                                <Badge key={channel} label="Canal" value={channel} tone="slate" />
+                            ))
+                        )}
+                    </div>
+                    <div className="text-xs font-semibold text-slate-100">Canales Echo</div>
+                    <div className="flex flex-wrap gap-2">
+                        {echoChannels.length === 0 ? (
+                            <Badge label="Canal" value="ninguno" tone="rose" />
+                        ) : (
+                            echoChannels.map((channel) => (
                                 <Badge key={channel} label="Canal" value={channel} tone="slate" />
                             ))
                         )}
