@@ -106,7 +106,7 @@ class ChatController extends Controller
                 'created_at' => $message->created_at?->toIso8601String(),
             ]);
 
-        $displayName = $chat->user?->name ?? $chat->chatRequest?->display_name ?? 'Usuario';
+        $displayName = $chat->chatRequest?->display_name ?? $chat->user?->name ?? 'Usuario';
 
         return Inertia::render('Chat/Room', [
             'chat' => [

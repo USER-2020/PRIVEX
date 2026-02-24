@@ -165,7 +165,7 @@ export default function Request() {
                             </h1>
                             <p className="mt-3 max-w-lg text-sm text-slate-300">
                                 Tu foto sera revisada por un administrador. El chat se habilita solo
-                                despues de la aprobacion y toda tu infromaión se borra en 24 horas.
+                                despues de la aprobacion y toda tu información se borra en 24 horas.
                             </p>
 
                             {flash?.status && (

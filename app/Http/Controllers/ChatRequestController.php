@@ -75,7 +75,7 @@ class ChatRequestController extends Controller
             'requests' => $requests,
             'activeChats' => $activeChats->map(fn ($chat) => [
                 'id' => $chat->id,
-                'user_name' => $chat->user?->name ?? $chat->chatRequest?->display_name ?? 'Usuario',
+                'user_name' => $chat->chatRequest?->display_name ?? $chat->user?->name ?? 'Usuario',
                 'ends_at' => $chat->ends_at?->toIso8601String(),
                 'started_at' => $chat->started_at?->toIso8601String(),
             ]),
