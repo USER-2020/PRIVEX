@@ -1,6 +1,6 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FiBell, FiClock } from 'react-icons/fi';
+import { FiClock } from 'react-icons/fi';
 import { Client as BeamsClient } from '@pusher/push-notifications-web';
 import PwaInstallBanner from '@/Components/PwaInstallBanner';
 import PwaStatusPanel from '@/Components/PwaStatusPanel';
@@ -191,7 +191,12 @@ export default function Request() {
                                 Verificacion privada
                             </p>
                             <div className="mt-4">
-                                <PwaStatusPanel publicToken={token} userId={auth?.user?.id} />
+                                <PwaStatusPanel
+                                    publicToken={token}
+                                    userId={auth?.user?.id}
+                                    onEnableNotifications={enableNotifications}
+                                    notifState={notificationsEnabled ? 'granted' : 'default'}
+                                />
                             </div>
                             <div className="mt-4">
                                 <PwaInstallBanner onEnableNotifications={enableNotifications} />
@@ -229,18 +234,6 @@ export default function Request() {
 
                                 <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
                                     <div className="flex flex-wrap gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={enableNotifications}
-                                            className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition ${
-                                                notificationsEnabled
-                                                    ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20'
-                                                    : 'border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20'
-                                            }`}
-                                        >
-                                            <FiBell className="h-4 w-4" />
-                                            {notificationsEnabled ? 'Notificaciones activas' : 'Notificaciones inactivas'}
-                                        </button>
                                         <button
                                             type="button"
                                             onClick={startCamera}

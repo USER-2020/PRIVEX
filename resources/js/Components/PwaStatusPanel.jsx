@@ -11,7 +11,7 @@ const isIos = () => {
     return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
 };
 
-export default function PwaStatusPanel({ userId, publicToken, isAdmin }) {
+export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableNotifications, notifState }) {
     const [open, setOpen] = useState(false);
     const [swReady, setSwReady] = useState(false);
     const [swScope, setSwScope] = useState('');
@@ -45,7 +45,7 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin }) {
         } catch (error) {
             setEchoState('unknown');
         }
-    }, []);
+    }, [open]);
 
     const channels = [
         isAdmin ? 'admin.chat-requests' : null,
@@ -53,6 +53,29 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin }) {
         publicToken ? `public-${publicToken}` : null,
         publicToken ? `public-chat.${publicToken}` : null,
     ].filter(Boolean);
+
+    const Badge = ({ label, value, tone = 'slate' }) => {
+        const tones = {
+            slate: 'border-slate-700 bg-slate-900/70 text-slate-200',
+            emerald: 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200',
+            rose: 'border-rose-400/40 bg-rose-500/10 text-rose-200',
+            amber: 'border-amber-400/40 bg-amber-500/10 text-amber-200',
+            cyan: 'border-cyan-400/40 bg-cyan-500/10 text-cyan-200',
+        };
+
+        return (
+            <span
+                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold ${tones[tone]}`}
+            >
+                <span className="opacity-70">{label}:</span>
+                <span>{value}</span>
+            </span>
+        );
+    };
+
+    const notifValue = notifState ?? notifPermission;
+    const notifTone =
+        notifValue === 'granted' ? 'emerald' : notifValue === 'denied' ? 'rose' : 'amber';
 
     return (
         <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-xs text-slate-200">
@@ -66,19 +89,44 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin }) {
             </button>
 
             {open && (
-                <div className="mt-3 grid gap-2 text-[11px] text-slate-300">
-                    <div>Plataforma: {ios ? 'iOS' : 'Otro'}</div>
-                    <div>Standalone: {standalone ? 'si' : 'no'}</div>
-                    <div>Notificaciones: {notifPermission}</div>
-                    <div>Service Worker: {swReady ? 'listo' : 'no'}</div>
-                    {swScope && <div>SW scope: {swScope}</div>}
-                    <div>Echo/Pusher: {echoState}</div>
-                    <div>Canales esperados:</div>
-                    {channels.length === 0 ? (
-                        <div>- ninguno</div>
-                    ) : (
-                        channels.map((channel) => <div key={channel}>- {channel}</div>)
+                <div className="mt-4 space-y-3 text-[11px] text-slate-300">
+                    <div className="flex flex-wrap gap-2">
+                        <Badge label="Plataforma" value={ios ? 'iOS' : 'Otro'} tone="cyan" />
+                        <Badge label="Standalone" value={standalone ? 'si' : 'no'} tone={standalone ? 'emerald' : 'amber'} />
+                        <Badge label="Notificaciones" value={notifValue} tone={notifTone} />
+                        <Badge label="Service Worker" value={swReady ? 'listo' : 'no'} tone={swReady ? 'emerald' : 'rose'} />
+                        <Badge label="Echo/Pusher" value={echoState} tone={echoState === 'connected' ? 'emerald' : 'amber'} />
+                    </div>
+                    {onEnableNotifications && (
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                onClick={onEnableNotifications}
+                                className={`inline-flex items-center gap-2 rounded-full border px-4 py-1 text-[11px] font-semibold transition ${
+                                    notifValue === 'granted'
+                                        ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20'
+                                        : 'border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20'
+                                }`}
+                            >
+                                Notificaciones {notifValue === 'granted' ? 'activas' : 'inactivas'}
+                            </button>
+                        </div>
                     )}
+                    {swScope && (
+                        <div className="flex flex-wrap gap-2">
+                            <Badge label="SW scope" value={swScope} tone="slate" />
+                        </div>
+                    )}
+                    <div className="text-xs font-semibold text-slate-100">Canales esperados</div>
+                    <div className="flex flex-wrap gap-2">
+                        {channels.length === 0 ? (
+                            <Badge label="Canal" value="ninguno" tone="rose" />
+                        ) : (
+                            channels.map((channel) => (
+                                <Badge key={channel} label="Canal" value={channel} tone="slate" />
+                            ))
+                        )}
+                    </div>
                 </div>
             )}
         </div>
