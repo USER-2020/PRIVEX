@@ -93,7 +93,7 @@ class ChatRequestController extends Controller
     {
         $now = Carbon::now();
 
-        $chat = DB::transaction(function () use ($chatRequest, $now, $beams) {
+        $chat = DB::transaction(function () use ($chatRequest, $now, $beams, $webPush) {
             $chatRequest->update([
                 'status' => 'approved',
                 'approved_at' => $now,
