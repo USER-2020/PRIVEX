@@ -1,5 +1,5 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Client as BeamsClient } from '@pusher/push-notifications-web';
 import { FiLogOut } from 'react-icons/fi';
 import PwaInstallBanner from '@/Components/PwaInstallBanner';
@@ -10,6 +10,7 @@ export default function ChatRequests({ requests, activeChats }) {
     const [items, setItems] = useState(requests || []);
     const [chats, setChats] = useState(activeChats || []);
     const [busy, setBusy] = useState({});
+    const beamsStartedRef = useRef(false);
     const { post, processing } = useForm({});
 
     const approve = (id) => {
@@ -64,7 +65,29 @@ export default function ChatRequests({ requests, activeChats }) {
         if (typeof window === 'undefined' || !('Notification' in window)) return;
         if (window.Notification.permission === 'default') {
             const result = await window.Notification.requestPermission();
+            if (result === 'granted') {
+                await startBeams();
+            }
             return;
+        }
+        if (window.Notification.permission === 'granted') {
+            await startBeams();
+        }
+    };
+
+    const startBeams = async () => {
+        if (beamsStartedRef.current) return;
+        const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
+        if (!instanceId) return;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+        try {
+            const beams = new BeamsClient({ instanceId });
+            await beams.start();
+            await beams.addDeviceInterest('admin');
+            beamsStartedRef.current = true;
+        } catch (error) {
+            // Ignore unsupported browser errors.
         }
     };
 
@@ -122,20 +145,10 @@ export default function ChatRequests({ requests, activeChats }) {
     }, []);
 
     useEffect(() => {
-        const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
-        if (!instanceId || !auth?.user?.id) return;
-        if (typeof window === 'undefined') return;
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-
-        try {
-            const beams = new BeamsClient({ instanceId });
-            beams
-                .start()
-                .then(() => beams.addDeviceInterest('admin'))
-                .catch(() => {});
-        } catch (error) {
-            // Ignore unsupported browser errors.
-        }
+        if (!auth?.user?.id) return;
+        if (typeof window === 'undefined' || !('Notification' in window)) return;
+        if (window.Notification.permission !== 'granted') return;
+        startBeams();
     }, [auth?.user?.id]);
 
     return (

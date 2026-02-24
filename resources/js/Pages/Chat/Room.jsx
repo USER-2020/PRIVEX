@@ -16,6 +16,7 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const emojiPickerRef = useRef(null);
     const bottomRef = useRef(null);
+    const beamsStartedRef = useRef(false);
     const [chatStatus, setChatStatus] = useState(chat?.status ?? 'active');
     const [closingChat, setClosingChat] = useState(false);
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -29,9 +30,35 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
         if (window.Notification.permission === 'default') {
             const result = await window.Notification.requestPermission();
             setNotificationsEnabled(result === 'granted');
+            if (result === 'granted') {
+                await startBeams();
+            }
             return;
         }
         setNotificationsEnabled(window.Notification.permission === 'granted');
+        if (window.Notification.permission === 'granted') {
+            await startBeams();
+        }
+    };
+
+    const startBeams = async () => {
+        if (beamsStartedRef.current) return;
+        const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
+        if (!instanceId) return;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+        try {
+            const beams = new BeamsClient({ instanceId });
+            await beams.start();
+            if (!isAdmin && auth?.user?.id) {
+                await beams.addDeviceInterest(`user-${auth.user.id}`);
+            } else if (!isAdmin && chat?.public_token) {
+                await beams.addDeviceInterest(`public-${chat.public_token}`);
+            }
+            beamsStartedRef.current = true;
+        } catch (error) {
+            // Ignore unsupported browser errors.
+        }
     };
 
     useEffect(() => {
@@ -124,40 +151,19 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
     }, [messages.length]);
 
     useEffect(() => {
-        const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
-        if (!instanceId || !auth?.user?.id || isAdmin) return;
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-
-        try {
-            const beams = new BeamsClient({
-                instanceId,
-            });
-
-            beams
-                .start()
-                .then(() => beams.addDeviceInterest(`user-${auth.user.id}`))
-                .catch(() => {});
-        } catch (error) {
-            // Ignore unsupported browser errors.
-        }
+        if (!auth?.user?.id || isAdmin) return;
+        if (typeof window === 'undefined' || !('Notification' in window)) return;
+        if (window.Notification.permission !== 'granted') return;
+        startBeams();
     }, [auth?.user?.id]);
 
     useEffect(() => {
         if (isAdmin) return;
         if (auth?.user?.id) return;
-        const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
-        if (!instanceId || !chat?.public_token) return;
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-
-        try {
-            const beams = new BeamsClient({ instanceId });
-            beams
-                .start()
-                .then(() => beams.addDeviceInterest(`public-${chat.public_token}`))
-                .catch(() => {});
-        } catch (error) {
-            // Ignore unsupported browser errors.
-        }
+        if (!chat?.public_token) return;
+        if (typeof window === 'undefined' || !('Notification' in window)) return;
+        if (window.Notification.permission !== 'granted') return;
+        startBeams();
     }, [chat?.public_token, auth?.user?.id, isAdmin]);
 
     const sendMessage = async (event) => {

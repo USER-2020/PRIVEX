@@ -8,6 +8,7 @@ import PwaStatusPanel from '@/Components/PwaStatusPanel';
 export default function Request() {
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
+    const beamsStartedRef = useRef(false);
     const [stream, setStream] = useState(null);
     const [previewUrl, setPreviewUrl] = useState('');
     const [notifyHint, setNotifyHint] = useState('');
@@ -96,10 +97,32 @@ export default function Request() {
         if (window.Notification.permission === 'default') {
             const result = await window.Notification.requestPermission();
             setNotificationsEnabled(result === 'granted');
+            if (result === 'granted') {
+                await startBeams();
+            }
             return;
         }
 
         setNotificationsEnabled(window.Notification.permission === 'granted');
+        if (window.Notification.permission === 'granted') {
+            await startBeams();
+        }
+    };
+
+    const startBeams = async () => {
+        if (beamsStartedRef.current) return;
+        const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
+        if (!instanceId || !token) return;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+        try {
+            const beams = new BeamsClient({ instanceId });
+            await beams.start();
+            await beams.addDeviceInterest(`public-${token}`);
+            beamsStartedRef.current = true;
+        } catch (error) {
+            // Ignore unsupported browser errors.
+        }
     };
 
     useEffect(() => {
@@ -110,19 +133,9 @@ export default function Request() {
 
     useEffect(() => {
         if (!token) return;
-        const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
-        if (!instanceId) return;
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-
-        try {
-            const beams = new BeamsClient({ instanceId });
-            beams
-                .start()
-                .then(() => beams.addDeviceInterest(`public-${token}`))
-                .catch(() => {});
-        } catch (error) {
-            // Ignore unsupported browser errors.
-        }
+        if (typeof window === 'undefined' || !('Notification' in window)) return;
+        if (window.Notification.permission !== 'granted') return;
+        startBeams();
     }, [token]);
 
     useEffect(() => {
