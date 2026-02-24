@@ -2,6 +2,7 @@ import { Head, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import { Client as BeamsClient } from '@pusher/push-notifications-web';
 import { FiLogOut } from 'react-icons/fi';
+import PwaInstallBanner from '@/Components/PwaInstallBanner';
 
 export default function ChatRequests({ requests, activeChats }) {
     const { auth } = usePage().props;
@@ -177,6 +178,9 @@ export default function ChatRequests({ requests, activeChats }) {
                         <p className="text-sm text-slate-300">
                             Revisa las fotos frontales y aprueba antes de habilitar el chat por 24 horas.
                         </p>
+                        <div className="mt-4">
+                            <PwaInstallBanner onEnableNotifications={enableNotifications} />
+                        </div>
                         <button
                             type="button"
                             onClick={enableNotifications}

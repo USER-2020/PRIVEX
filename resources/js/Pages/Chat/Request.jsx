@@ -2,6 +2,7 @@ import { Head, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FiClock } from 'react-icons/fi';
 import { Client as BeamsClient } from '@pusher/push-notifications-web';
+import PwaInstallBanner from '@/Components/PwaInstallBanner';
 
 export default function Request() {
     const videoRef = useRef(null);
@@ -160,6 +161,9 @@ export default function Request() {
                             <p className="text-sm uppercase tracking-[0.22em] text-cyan-300/80">
                                 Verificacion privada
                             </p>
+                            <div className="mt-4">
+                                <PwaInstallBanner onEnableNotifications={enableNotifications} />
+                            </div>
                             <h1 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">
                                 Captura tu foto frontal y confirma tu nombre
                             </h1>

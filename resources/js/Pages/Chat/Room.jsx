@@ -5,6 +5,7 @@ import { Client as BeamsClient } from '@pusher/push-notifications-web';
 import Picker from '@emoji-mart/react';
 import emojiData from '@emoji-mart/data';
 import { FiMessageSquare } from 'react-icons/fi';
+import PwaInstallBanner from '@/Components/PwaInstallBanner';
 
 export default function Room({ chat, messages: initialMessages, isAdmin, viewer }) {
     const { auth } = usePage().props;
@@ -268,6 +269,7 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
             <Head title="Chat Activo" />
             <main className="min-h-screen bg-slate-950 px-4 py-12 text-slate-100 sm:px-8">
                 <div className="mx-auto w-full max-w-5xl rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60">
+                    <PwaInstallBanner onEnableNotifications={ensureNotifications} />
                     <header className="flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <h1 className="text-3xl font-semibold text-white">Chat Activo</h1>
