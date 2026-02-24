@@ -18,6 +18,7 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableN
     const [echoState, setEchoState] = useState('unknown');
     const [notifPermission, setNotifPermission] = useState('unsupported');
     const [testStatus, setTestStatus] = useState('idle');
+    const [testMessage, setTestMessage] = useState('');
 
     const ios = useMemo(() => isIos(), []);
     const standalone = useMemo(() => isStandalone(), []);
@@ -122,10 +123,11 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableN
                                     const targetChannel = channels[0];
                                     if (!targetChannel) return;
                                     setTestStatus('sending');
+                                    setTestMessage('');
                                     try {
                                         const csrf =
                                             document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
-                                        await fetch('/push/test', {
+                                        const response = await fetch('/push/test', {
                                             method: 'POST',
                                             headers: {
                                                 'Content-Type': 'application/json',
@@ -139,9 +141,25 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableN
                                                 url: '/chat',
                                             }),
                                         });
-                                        setTestStatus('sent');
+                                        const payload = await response.json().catch(() => null);
+                                        if (response.ok) {
+                                            const result = payload?.result;
+                                            if (result?.error) {
+                                                setTestStatus('error');
+                                                setTestMessage(result.error);
+                                            } else {
+                                                setTestStatus('sent');
+                                                setTestMessage(
+                                                    `sent:${result?.sent ?? 0} failed:${result?.failed ?? 0} expired:${result?.expired ?? 0}`
+                                                );
+                                            }
+                                        } else {
+                                            setTestStatus('error');
+                                            setTestMessage('http_error');
+                                        }
                                     } catch (error) {
                                         setTestStatus('error');
+                                        setTestMessage('request_failed');
                                     }
                                 }}
                                 className="inline-flex items-center gap-2 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-4 py-1 text-[11px] font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
@@ -149,6 +167,9 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableN
                                 Test push {testStatus === 'sending' ? '…' : testStatus === 'sent' ? 'ok' : testStatus === 'error' ? 'error' : ''}
                             </button>
                         </div>
+                    )}
+                    {testMessage && (
+                        <div className="text-[11px] text-slate-400">Test: {testMessage}</div>
                     )}
                     {swScope && (
                         <div className="flex flex-wrap gap-2">

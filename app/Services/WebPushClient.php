@@ -27,12 +27,18 @@ class WebPushClient
         ]);
     }
 
-    public function notifyChannel(string $channel, string $title, string $body, array $data = []): void
+    public function notifyChannel(string $channel, string $title, string $body, array $data = []): array
     {
         $client = $this->client();
 
         if (! $client) {
-            return;
+            return [
+                'sent' => 0,
+                'failed' => 0,
+                'expired' => 0,
+                'reports' => [],
+                'error' => 'webpush_not_configured',
+            ];
         }
 
         $subscriptions = PushSubscription::query()
@@ -41,7 +47,13 @@ class WebPushClient
             ->get();
 
         if ($subscriptions->isEmpty()) {
-            return;
+            return [
+                'sent' => 0,
+                'failed' => 0,
+                'expired' => 0,
+                'reports' => [],
+                'error' => 'no_subscriptions',
+            ];
         }
 
         $payload = json_encode([
@@ -56,11 +68,34 @@ class WebPushClient
             $client->queueNotification(Subscription::create($record->subscription), $payload);
         }
 
+        $summary = [
+            'sent' => 0,
+            'failed' => 0,
+            'expired' => 0,
+            'reports' => [],
+        ];
+
         foreach ($client->flush() as $report) {
+            $statusCode = $report->getResponse()?->getStatusCode();
+            $summary['reports'][] = [
+                'endpoint' => $report->getEndpoint(),
+                'success' => $report->isSuccess(),
+                'expired' => $report->isSubscriptionExpired(),
+                'reason' => $report->getReason(),
+                'status' => $statusCode,
+            ];
+
             if ($report->isSubscriptionExpired()) {
                 $endpoint = $report->getEndpoint();
                 PushSubscription::where('endpoint', $endpoint)->delete();
+                $summary['expired']++;
+            } elseif ($report->isSuccess()) {
+                $summary['sent']++;
+            } else {
+                $summary['failed']++;
             }
         }
+
+        return $summary;
     }
 }

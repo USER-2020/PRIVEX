@@ -50,13 +50,16 @@ class PushSubscriptionController extends Controller
             'url' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $webPush->notifyChannel(
+        $result = $webPush->notifyChannel(
             $data['channel'],
             $data['title'] ?? 'Test iOS',
             $data['body'] ?? 'Hola iOS',
             ['url' => $data['url'] ?? '/']
         );
 
-        return response()->json(['ok' => true]);
+        return response()->json([
+            'ok' => true,
+            'result' => $result,
+        ]);
     }
 }
