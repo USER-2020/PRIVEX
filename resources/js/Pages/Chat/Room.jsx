@@ -23,8 +23,8 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
 
     const ensureNotifications = async () => {
         if (!('Notification' in window)) return;
-        if (Notification.permission === 'default') {
-            await Notification.requestPermission();
+        if (window.Notification.permission === 'default') {
+            await window.Notification.requestPermission();
         }
     };
 
@@ -119,15 +119,20 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
     useEffect(() => {
         const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
         if (!instanceId || !auth?.user?.id || isAdmin) return;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
-        const beams = new BeamsClient({
-            instanceId,
-        });
+        try {
+            const beams = new BeamsClient({
+                instanceId,
+            });
 
-        beams
-            .start()
-            .then(() => beams.addDeviceInterest(`user-${auth.user.id}`))
-            .catch(() => {});
+            beams
+                .start()
+                .then(() => beams.addDeviceInterest(`user-${auth.user.id}`))
+                .catch(() => {});
+        } catch (error) {
+            // Ignore unsupported browser errors.
+        }
     }, [auth?.user?.id]);
 
     useEffect(() => {
@@ -135,12 +140,17 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
         if (auth?.user?.id) return;
         const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
         if (!instanceId || !chat?.public_token) return;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
-        const beams = new BeamsClient({ instanceId });
-        beams
-            .start()
-            .then(() => beams.addDeviceInterest(`public-${chat.public_token}`))
-            .catch(() => {});
+        try {
+            const beams = new BeamsClient({ instanceId });
+            beams
+                .start()
+                .then(() => beams.addDeviceInterest(`public-${chat.public_token}`))
+                .catch(() => {});
+        } catch (error) {
+            // Ignore unsupported browser errors.
+        }
     }, [chat?.public_token, auth?.user?.id, isAdmin]);
 
     const sendMessage = async (event) => {

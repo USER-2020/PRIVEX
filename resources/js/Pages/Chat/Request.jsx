@@ -73,8 +73,8 @@ export default function Request() {
 
     const enableNotifications = async () => {
         if (!('Notification' in window)) return;
-        if (Notification.permission === 'default') {
-            await Notification.requestPermission();
+        if (window.Notification.permission === 'default') {
+            await window.Notification.requestPermission();
         }
     };
 
@@ -82,12 +82,17 @@ export default function Request() {
         if (!token) return;
         const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
         if (!instanceId) return;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
-        const beams = new BeamsClient({ instanceId });
-        beams
-            .start()
-            .then(() => beams.addDeviceInterest(`public-${token}`))
-            .catch(() => {});
+        try {
+            const beams = new BeamsClient({ instanceId });
+            beams
+                .start()
+                .then(() => beams.addDeviceInterest(`public-${token}`))
+                .catch(() => {});
+        } catch (error) {
+            // Ignore unsupported browser errors.
+        }
     }, [token]);
 
     useEffect(() => {
@@ -160,7 +165,7 @@ export default function Request() {
                             </h1>
                             <p className="mt-3 max-w-lg text-sm text-slate-300">
                                 Tu foto sera revisada por un administrador. El chat se habilita solo
-                                despues de la aprobacion y dura 24 horas.
+                                despues de la aprobacion y toda tu infromaión se borra en 24 horas.
                             </p>
 
                             {flash?.status && (

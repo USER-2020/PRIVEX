@@ -58,12 +58,15 @@ export default function ChatRequests({ requests, activeChats }) {
         });
     };
 
-    const notificationsEnabled = useMemo(() => Notification?.permission === 'granted', []);
+    const notificationsEnabled =
+        typeof window !== 'undefined' &&
+        'Notification' in window &&
+        window.Notification.permission === 'granted';
 
     const enableNotifications = async () => {
-        if (!('Notification' in window)) return;
-        if (Notification.permission === 'default') {
-            await Notification.requestPermission();
+        if (typeof window === 'undefined' || !('Notification' in window)) return;
+        if (window.Notification.permission === 'default') {
+            await window.Notification.requestPermission();
         }
     };
 
@@ -123,12 +126,18 @@ export default function ChatRequests({ requests, activeChats }) {
     useEffect(() => {
         const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
         if (!instanceId || !auth?.user?.id) return;
+        if (typeof window === 'undefined') return;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
-        const beams = new BeamsClient({ instanceId });
-        beams
-            .start()
-            .then(() => beams.addDeviceInterest('admin'))
-            .catch(() => {});
+        try {
+            const beams = new BeamsClient({ instanceId });
+            beams
+                .start()
+                .then(() => beams.addDeviceInterest('admin'))
+                .catch(() => {});
+        } catch (error) {
+            // Ignore unsupported browser errors.
+        }
     }, [auth?.user?.id]);
 
     return (
