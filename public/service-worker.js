@@ -1,5 +1,30 @@
 importScripts("https://js.pusher.com/beams/service-worker.js");
 
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+
+  let payload = {};
+  try {
+    payload = event.data.json();
+  } catch (error) {
+    payload = { title: "Notificacion", body: event.data.text() };
+  }
+
+  if (!payload || payload.webpush !== true) return;
+
+  const title = payload.title || "Notificacion";
+  const options = {
+    body: payload.body || "",
+    icon: payload.icon || "/icons/icon-192.png",
+    data: {
+      ...(payload.data || {}),
+      url: payload.url || payload.data?.url || "/",
+    },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
 const CACHE_NAME = "privexx-pwa-v1";
 const CORE_ASSETS = ["/", "/manifest.json", "/pwa.js"];
 

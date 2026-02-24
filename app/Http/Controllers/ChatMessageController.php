@@ -6,13 +6,14 @@ use App\Events\ChatMessageSent;
 use App\Models\Chat;
 use App\Models\ChatMessage;
 use App\Services\BeamsClient;
+use App\Services\WebPushClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class ChatMessageController extends Controller
 {
-    public function store(Request $request, Chat $chat, BeamsClient $beams): JsonResponse
+    public function store(Request $request, Chat $chat, BeamsClient $beams, WebPushClient $webPush): JsonResponse
     {
         $user = $request->user();
         $isAdmin = method_exists($user, 'hasRole') && $user->hasRole('admin');
@@ -88,6 +89,12 @@ class ChatMessageController extends Controller
                 $message->body !== '' ? $message->body : 'Tienes un nuevo archivo.',
                 ['url' => url("/chat/public/{$chat->public_token}")]
             );
+            $webPush->notifyChannel(
+                "public-{$chat->public_token}",
+                'Nuevo mensaje de PRIVEXX',
+                $message->body !== '' ? $message->body : 'Tienes un nuevo archivo.',
+                ['url' => url("/chat/public/{$chat->public_token}")]
+            );
         }
 
         return response()->json([
@@ -105,7 +112,7 @@ class ChatMessageController extends Controller
         ]);
     }
 
-    public function storePublic(Request $request, string $token, BeamsClient $beams): JsonResponse
+    public function storePublic(Request $request, string $token, BeamsClient $beams, WebPushClient $webPush): JsonResponse
     {
         $chat = Chat::query()
             ->where('public_token', $token)
@@ -165,9 +172,21 @@ class ChatMessageController extends Controller
                 $message->body !== '' ? $message->body : 'Tienes un nuevo archivo.',
                 ['url' => url('/chat')]
             );
+            $webPush->notifyChannel(
+                "user-{$chat->user_id}",
+                'Nuevo mensaje',
+                $message->body !== '' ? $message->body : 'Tienes un nuevo archivo.',
+                ['url' => url('/chat')]
+            );
         }
 
         $beams->notifyInterest(
+            'admin',
+            "Nuevo mensaje de {$senderName}",
+            $message->body !== '' ? $message->body : 'Tienes un nuevo archivo.',
+            ['url' => url("/admin/chat/{$chat->id}")]
+        );
+        $webPush->notifyChannel(
             'admin',
             "Nuevo mensaje de {$senderName}",
             $message->body !== '' ? $message->body : 'Tienes un nuevo archivo.',

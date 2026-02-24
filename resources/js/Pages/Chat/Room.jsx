@@ -7,6 +7,8 @@ import emojiData from '@emoji-mart/data';
 import { FiMessageSquare } from 'react-icons/fi';
 import PwaInstallBanner from '@/Components/PwaInstallBanner';
 import PwaStatusPanel from '@/Components/PwaStatusPanel';
+import { isIosPwa } from '@/utils/pwa';
+import { registerIosWebPush } from '@/push/iosWebPush';
 
 export default function Room({ chat, messages: initialMessages, isAdmin, viewer }) {
     const { auth } = usePage().props;
@@ -31,14 +33,35 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
             const result = await window.Notification.requestPermission();
             setNotificationsEnabled(result === 'granted');
             if (result === 'granted') {
-                await startBeams();
+                await registerPlatformNotifications();
             }
             return;
         }
         setNotificationsEnabled(window.Notification.permission === 'granted');
         if (window.Notification.permission === 'granted') {
-            await startBeams();
+            await registerPlatformNotifications();
         }
+    };
+
+    const registerPlatformNotifications = async () => {
+        if (isAdmin) return;
+        const channel = auth?.user?.id
+            ? `user-${auth.user.id}`
+            : chat?.public_token
+              ? `public-${chat.public_token}`
+              : null;
+        if (!channel) return;
+
+        if (isIosPwa()) {
+            await registerIosWebPush({
+                channel,
+                publicToken: chat?.public_token,
+                userId: auth?.user?.id,
+            });
+            return;
+        }
+
+        await startBeams();
     };
 
     const startBeams = async () => {
@@ -46,9 +69,14 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
         const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
         if (!instanceId) return;
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        if (isIosPwa()) return;
 
         try {
-            const beams = new BeamsClient({ instanceId });
+            const registration = await navigator.serviceWorker.ready;
+            const beams = new BeamsClient({
+                instanceId,
+                serviceWorkerRegistration: registration,
+            });
             await beams.start();
             if (!isAdmin && auth?.user?.id) {
                 await beams.addDeviceInterest(`user-${auth.user.id}`);
@@ -154,7 +182,7 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
         if (!auth?.user?.id || isAdmin) return;
         if (typeof window === 'undefined' || !('Notification' in window)) return;
         if (window.Notification.permission !== 'granted') return;
-        startBeams();
+        registerPlatformNotifications();
     }, [auth?.user?.id]);
 
     useEffect(() => {
@@ -163,7 +191,7 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
         if (!chat?.public_token) return;
         if (typeof window === 'undefined' || !('Notification' in window)) return;
         if (window.Notification.permission !== 'granted') return;
-        startBeams();
+        registerPlatformNotifications();
     }, [chat?.public_token, auth?.user?.id, isAdmin]);
 
     const sendMessage = async (event) => {

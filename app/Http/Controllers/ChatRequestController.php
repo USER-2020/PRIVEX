@@ -10,6 +10,7 @@ use App\Models\Chat;
 use App\Models\ChatRequest;
 use App\Notifications\ChatApproved;
 use App\Services\BeamsClient;
+use App\Services\WebPushClient;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -27,7 +28,7 @@ class ChatRequestController extends Controller
         ]);
     }
 
-    public function store(Request $request, BeamsClient $beams): RedirectResponse
+    public function store(Request $request, BeamsClient $beams, WebPushClient $webPush): RedirectResponse
     {
         $data = $request->validate([
             'display_name' => ['required', 'string', 'max:80'],
@@ -47,6 +48,12 @@ class ChatRequestController extends Controller
         broadcast(new ChatRequestSubmitted($chatRequest))->toOthers();
 
         $beams->notifyInterest(
+            'admin',
+            'Nueva solicitud de chat',
+            "Solicitud de {$chatRequest->display_name}",
+            ['url' => url('/admin/chat-requests')]
+        );
+        $webPush->notifyChannel(
             'admin',
             'Nueva solicitud de chat',
             "Solicitud de {$chatRequest->display_name}",
@@ -82,7 +89,7 @@ class ChatRequestController extends Controller
         ]);
     }
 
-    public function approve(ChatRequest $chatRequest, BeamsClient $beams): RedirectResponse
+    public function approve(ChatRequest $chatRequest, BeamsClient $beams, WebPushClient $webPush): RedirectResponse
     {
         $now = Carbon::now();
 
@@ -112,10 +119,22 @@ class ChatRequestController extends Controller
                     'Tu solicitud fue aprobada. Ya puedes chatear.',
                     ['url' => url('/chat')]
                 );
+                $webPush->notifyChannel(
+                    "user-{$chatRequest->user_id}",
+                    'Chat aprobado',
+                    'Tu solicitud fue aprobada. Ya puedes chatear.',
+                    ['url' => url('/chat')]
+                );
             }
 
             if ($chatRequest->public_token) {
                 $beams->notifyInterest(
+                    "public-{$chatRequest->public_token}",
+                    'Chat aprobado',
+                    'Tu solicitud fue aprobada. Ya puedes chatear.',
+                    ['url' => url("/chat/public/{$chatRequest->public_token}")]
+                );
+                $webPush->notifyChannel(
                     "public-{$chatRequest->public_token}",
                     'Chat aprobado',
                     'Tu solicitud fue aprobada. Ya puedes chatear.',

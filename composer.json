@@ -12,6 +12,7 @@
         "laravel/fortify": "^1.34",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+        "minishlink/web-push": "^9.0",
         "pusher/pusher-php-server": "^7.2",
         "pusher/pusher-push-notifications": "^0.10.5",
         "spatie/laravel-permission": "6.24.1"

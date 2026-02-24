@@ -4,6 +4,8 @@ import { Client as BeamsClient } from '@pusher/push-notifications-web';
 import { FiLogOut } from 'react-icons/fi';
 import PwaInstallBanner from '@/Components/PwaInstallBanner';
 import PwaStatusPanel from '@/Components/PwaStatusPanel';
+import { isIosPwa } from '@/utils/pwa';
+import { registerIosWebPush } from '@/push/iosWebPush';
 
 export default function ChatRequests({ requests, activeChats }) {
     const { auth } = usePage().props;
@@ -66,13 +68,25 @@ export default function ChatRequests({ requests, activeChats }) {
         if (window.Notification.permission === 'default') {
             const result = await window.Notification.requestPermission();
             if (result === 'granted') {
-                await startBeams();
+                await registerPlatformNotifications();
             }
             return;
         }
         if (window.Notification.permission === 'granted') {
-            await startBeams();
+            await registerPlatformNotifications();
         }
+    };
+
+    const registerPlatformNotifications = async () => {
+        if (isIosPwa()) {
+            await registerIosWebPush({
+                channel: 'admin',
+                userId: auth?.user?.id,
+            });
+            return;
+        }
+
+        await startBeams();
     };
 
     const startBeams = async () => {
@@ -80,9 +94,14 @@ export default function ChatRequests({ requests, activeChats }) {
         const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
         if (!instanceId) return;
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        if (isIosPwa()) return;
 
         try {
-            const beams = new BeamsClient({ instanceId });
+            const registration = await navigator.serviceWorker.ready;
+            const beams = new BeamsClient({
+                instanceId,
+                serviceWorkerRegistration: registration,
+            });
             await beams.start();
             await beams.addDeviceInterest('admin');
             beamsStartedRef.current = true;
@@ -148,7 +167,7 @@ export default function ChatRequests({ requests, activeChats }) {
         if (!auth?.user?.id) return;
         if (typeof window === 'undefined' || !('Notification' in window)) return;
         if (window.Notification.permission !== 'granted') return;
-        startBeams();
+        registerPlatformNotifications();
     }, [auth?.user?.id]);
 
     return (

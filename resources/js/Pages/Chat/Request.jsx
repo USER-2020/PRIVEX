@@ -4,6 +4,8 @@ import { FiClock } from 'react-icons/fi';
 import { Client as BeamsClient } from '@pusher/push-notifications-web';
 import PwaInstallBanner from '@/Components/PwaInstallBanner';
 import PwaStatusPanel from '@/Components/PwaStatusPanel';
+import { isIos, isIosPwa, isStandalone } from '@/utils/pwa';
+import { registerIosWebPush } from '@/push/iosWebPush';
 
 export default function Request() {
     const videoRef = useRef(null);
@@ -20,11 +22,6 @@ export default function Request() {
         display_name: '',
         photo: null,
     });
-
-    const isStandalone = () => {
-        if (typeof window === 'undefined') return false;
-        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-    };
 
     const startCamera = async () => {
         if (stream) return;
@@ -88,8 +85,7 @@ export default function Request() {
         if (typeof window === 'undefined') return;
         if (!('Notification' in window)) return;
 
-        const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-        if (isIOS && !isStandalone()) {
+        if (isIos() && !isStandalone()) {
             setNotifyHint('Para iOS debes instalar la app y abrirla desde el ícono para activar notificaciones.');
             return;
         }
@@ -98,15 +94,31 @@ export default function Request() {
             const result = await window.Notification.requestPermission();
             setNotificationsEnabled(result === 'granted');
             if (result === 'granted') {
-                await startBeams();
+                await registerPlatformNotifications();
             }
             return;
         }
 
         setNotificationsEnabled(window.Notification.permission === 'granted');
         if (window.Notification.permission === 'granted') {
-            await startBeams();
+            await registerPlatformNotifications();
         }
+    };
+
+    const registerPlatformNotifications = async () => {
+        const channel = token ? `public-${token}` : auth?.user?.id ? `user-${auth.user.id}` : null;
+        if (!channel) return;
+
+        if (isIosPwa()) {
+            await registerIosWebPush({
+                channel,
+                publicToken: token,
+                userId: auth?.user?.id,
+            });
+            return;
+        }
+
+        await startBeams();
     };
 
     const startBeams = async () => {
@@ -114,9 +126,14 @@ export default function Request() {
         const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
         if (!instanceId || !token) return;
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        if (isIosPwa()) return;
 
         try {
-            const beams = new BeamsClient({ instanceId });
+            const registration = await navigator.serviceWorker.ready;
+            const beams = new BeamsClient({
+                instanceId,
+                serviceWorkerRegistration: registration,
+            });
             await beams.start();
             await beams.addDeviceInterest(`public-${token}`);
             beamsStartedRef.current = true;
@@ -135,7 +152,7 @@ export default function Request() {
         if (!token) return;
         if (typeof window === 'undefined' || !('Notification' in window)) return;
         if (window.Notification.permission !== 'granted') return;
-        startBeams();
+        registerPlatformNotifications();
     }, [token]);
 
     useEffect(() => {
