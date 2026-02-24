@@ -7,8 +7,9 @@ export default function Request() {
     const canvasRef = useRef(null);
     const [stream, setStream] = useState(null);
     const [previewUrl, setPreviewUrl] = useState('');
-    const { flash, token } = usePage().props;
+    const { flash, token, queue } = usePage().props;
     const { auth } = usePage().props;
+    const [queuePosition, setQueuePosition] = useState(queue?.position ?? null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         display_name: '',
@@ -73,12 +74,19 @@ export default function Request() {
 
         if (token) {
             const channel = window.Echo.channel(`public-approval.${token}`);
+            channel.listen('.chat.queue', (event) => {
+                console.log('[public-approval] chat.queue', token, event);
+                if (typeof event?.position === 'number') {
+                    setQueuePosition(event.position);
+                }
+            });
             channel.listen('.chat.approved', () => {
                 console.log('[public-approval] chat.approved', token);
                 window.location.href = `/chat/public/${token}`;
             });
 
             return () => {
+                channel.stopListening('.chat.queue');
                 channel.stopListening('.chat.approved');
                 window.Echo.leave(`public-approval.${token}`);
             };
@@ -98,7 +106,22 @@ export default function Request() {
         };
     }, [auth?.user?.id, token]);
 
-    if (token && flash?.status) {
+    useEffect(() => {
+        if (!token || queuePosition !== null) return;
+        if (!window.axios) return;
+
+        window.axios
+            .get(`/chat/request/queue?token=${token}`)
+            .then((response) => {
+                const position = response?.data?.position;
+                if (typeof position === 'number') {
+                    setQueuePosition(position);
+                }
+            })
+            .catch(() => {});
+    }, [queuePosition, token]);
+
+    if (token) {
         return (
             <>
                 <Head title="Solicitud enviada" />
@@ -112,8 +135,13 @@ export default function Request() {
                             <p className="mt-2 text-sm text-slate-300">
                                 Estamos esperando la aprobacion del admin. Te avisaremos cuando el chat este listo.
                             </p>
+                            {queuePosition !== null && (
+                                <div className="mt-6 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-200">
+                                    Tu puesto en la cola: {queuePosition}
+                                </div>
+                            )}
                             <div className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-                                {flash.status}
+                                {flash?.status ?? 'Tu solicitud esta en espera de validacion.'}
                             </div>
                         </div>
                     </div>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Events\ChatApprovedBroadcast;
 use App\Events\ChatApprovedAdmin;
 use App\Events\ChatApprovedPublic;
+use App\Events\ChatQueueUpdated;
 use App\Events\ChatRequestSubmitted;
 use App\Models\Chat;
 use App\Models\ChatRequest;
@@ -12,6 +13,7 @@ use App\Models\User;
 use App\Notifications\ChatApproved;
 use App\Notifications\ChatEventNotification;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -24,8 +26,21 @@ class ChatRequestController extends Controller
 {
     public function create(Request $request): Response
     {
+        $token = $request->query('token');
+        $queuePosition = $this->queuePositionForToken($token);
+
         return Inertia::render('Chat/Request', [
-            'token' => $request->query('token'),
+            'token' => $token,
+            'queue' => $queuePosition ? ['position' => $queuePosition] : null,
+        ]);
+    }
+
+    public function queue(Request $request): JsonResponse
+    {
+        $position = $this->queuePositionForToken($request->query('token'));
+
+        return response()->json([
+            'position' => $position,
         ]);
     }
 
@@ -49,6 +64,7 @@ class ChatRequestController extends Controller
         ]);
 
         broadcast(new ChatRequestSubmitted($chatRequest))->toOthers();
+        $this->broadcastQueuePositions();
 
         User::role('admin')->get()->each->notify(new ChatEventNotification(
             'Nueva solicitud de chat',
@@ -66,7 +82,8 @@ class ChatRequestController extends Controller
     {
         $requests = ChatRequest::query()
             ->where('status', 'pending')
-            ->latest()
+            ->orderBy('created_at')
+            ->orderBy('id')
             ->get(['id', 'display_name', 'photo_path', 'created_at']);
 
         $activeChats = Chat::query()
@@ -132,6 +149,8 @@ class ChatRequestController extends Controller
             broadcast(new ChatApprovedBroadcast($chat))->toOthers();
         }
 
+        $this->broadcastQueuePositions();
+
         return back()->with('status', 'Solicitud aprobada.');
     }
 
@@ -144,6 +163,56 @@ class ChatRequestController extends Controller
             'expires_at' => null,
         ]);
 
+        $this->broadcastQueuePositions();
+
         return back()->with('status', 'Solicitud rechazada.');
+    }
+
+    private function queuePositionForToken(?string $token): ?int
+    {
+        if (! $token) {
+            return null;
+        }
+
+        $chatRequest = ChatRequest::query()
+            ->where('public_token', $token)
+            ->where('status', 'pending')
+            ->first(['id', 'created_at']);
+
+        if (! $chatRequest) {
+            return null;
+        }
+
+        $beforeCount = ChatRequest::query()
+            ->where('status', 'pending')
+            ->where(function ($query) use ($chatRequest) {
+                $query->where('created_at', '<', $chatRequest->created_at)
+                    ->orWhere(function ($subQuery) use ($chatRequest) {
+                        $subQuery->where('created_at', $chatRequest->created_at)
+                            ->where('id', '<', $chatRequest->id);
+                    });
+            })
+            ->count();
+
+        return $beforeCount + 1;
+    }
+
+    private function broadcastQueuePositions(): void
+    {
+        $pending = ChatRequest::query()
+            ->where('status', 'pending')
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get(['public_token']);
+
+        $position = 1;
+        foreach ($pending as $request) {
+            if (! $request->public_token) {
+                continue;
+            }
+
+            broadcast(new ChatQueueUpdated($request->public_token, $position));
+            $position++;
+        }
     }
 }

@@ -73,13 +73,13 @@ export default function ChatRequests({ requests, activeChats }) {
                 const exists = prev.some((item) => item.id === event.id);
                 if (exists) return prev;
                 return [
+                    ...prev,
                     {
                         id: event.id,
                         display_name: event.display_name,
                         photo_path: event.photo_path,
                         created_at: event.created_at,
                     },
-                    ...prev,
                 ];
             });
 

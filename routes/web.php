@@ -25,6 +25,7 @@ Route::middleware('auth')->get('/dashboard', [DashboardController::class, 'show'
 
 Route::get('/chat/request', [ChatRequestController::class, 'create'])->name('chat.request');
 Route::post('/chat/request', [ChatRequestController::class, 'store'])->name('chat.request.store');
+Route::get('/chat/request/queue', [ChatRequestController::class, 'queue'])->name('chat.request.queue');
 Route::get('/chat/public/{token}', [ChatController::class, 'showPublic'])->name('chat.public');
 Route::post('/chat/public/{token}/messages', [ChatMessageController::class, 'storePublic'])->name('chat.public.messages');
 
