@@ -7,6 +7,7 @@ use App\Http\Controllers\ChatRequestController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PushSubscriptionController;
+use App\Http\Controllers\PushAckController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -30,6 +31,7 @@ Route::get('/chat/public/{token}', [ChatController::class, 'showPublic'])->name(
 Route::post('/chat/public/{token}/messages', [ChatMessageController::class, 'storePublic'])->name('chat.public.messages');
 Route::post('/push/subscribe', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
 Route::post('/push/test', [PushSubscriptionController::class, 'test'])->name('push.test');
+Route::post('/push/ack', [PushAckController::class, 'store'])->name('push.ack');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');

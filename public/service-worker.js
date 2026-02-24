@@ -12,6 +12,21 @@ self.addEventListener("push", (event) => {
 
   if (!payload || payload.webpush !== true) return;
 
+  const ackUrl = "/push/ack";
+  const ackBody = JSON.stringify({
+    ts: Date.now(),
+    title: payload.title || "",
+    channel: payload.data?.channel || null,
+    url: payload.url || payload.data?.url || null,
+  });
+  event.waitUntil(
+    fetch(ackUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: ackBody,
+    }).catch(() => {})
+  );
+
   const title = payload.title || "Notificacion";
   const baseData = {
     ...(payload.data || {}),
