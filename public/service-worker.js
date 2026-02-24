@@ -16,6 +16,12 @@ self.addEventListener("push", (event) => {
   const options = {
     body: payload.body || "",
     icon: payload.icon || "/icons/icon-192.png",
+    badge: payload.badge || "/icons/icon-192.png",
+    tag: payload.tag || "privexx-test",
+    renotify: payload.renotify ?? true,
+    requireInteraction: payload.requireInteraction ?? true,
+    silent: payload.silent ?? false,
+    timestamp: payload.timestamp || Date.now(),
     data: {
       ...(payload.data || {}),
       url: payload.url || payload.data?.url || "/",
