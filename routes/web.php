@@ -6,6 +6,7 @@ use App\Http\Controllers\ChatRequestController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Broadcast;
@@ -43,5 +44,16 @@ Route::middleware('auth')->group(function () {
             ->name('admin.chat.requests.reject');
         Route::get('/admin/chat/{chat}', [ChatController::class, 'showAdmin'])->name('admin.chat.show');
         Route::post('/admin/chat/{chat}/close', [ChatController::class, 'close'])->name('admin.chat.close');
+    });
+
+    Route::middleware('role:manager')->group(function () {
+        Route::get('/manager/users/{user}/edit', [SuperAdminUserController::class, 'edit'])
+            ->name('manager.users.edit');
+        Route::get('/manager/users/create', [SuperAdminUserController::class, 'create'])
+            ->name('manager.users.create');
+        Route::put('/manager/users/{user}', [SuperAdminUserController::class, 'update'])
+            ->name('manager.users.update');
+        Route::post('/manager/users', [SuperAdminUserController::class, 'store'])
+            ->name('manager.users.store');
     });
 });

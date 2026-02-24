@@ -33,6 +33,11 @@ class RolesAndPermissionsSeeder extends Seeder
             ]);
         }
 
+        $superadmin = Role::firstOrCreate([
+            'name' => 'superadmin',
+            'guard_name' => 'web',
+        ]);
+
         $admin = Role::firstOrCreate([
             'name' => 'admin',
             'guard_name' => 'web',
@@ -48,6 +53,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'guard_name' => 'web',
         ]);
 
+        $superadmin->syncPermissions($permissions);
         $admin->syncPermissions($permissions);
         $manager->syncPermissions([
             'users.view',

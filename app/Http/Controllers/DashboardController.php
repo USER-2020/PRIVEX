@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Chat;
 use App\Models\ChatRequest;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -14,7 +15,8 @@ class DashboardController extends Controller
     public function show(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
-        $isAdmin = method_exists($user, 'hasRole') && $user->hasRole('admin');
+        $isAdmin = $user && method_exists($user, 'hasRole') && $user->hasRole('admin');
+        $isManager = $user && method_exists($user, 'hasRole') && $user->hasRole('manager');
 
         if ($isAdmin) {
             $requests = ChatRequest::query()
@@ -35,6 +37,21 @@ class DashboardController extends Controller
                     'user_name' => $chat->chatRequest?->display_name ?? $chat->user?->name ?? 'Usuario',
                     'ends_at' => $chat->ends_at?->toIso8601String(),
                     'started_at' => $chat->started_at?->toIso8601String(),
+                ]),
+            ]);
+        }
+
+        if ($isManager) {
+            $users = User::query()
+                ->latest()
+                ->get(['id', 'name', 'email', 'created_at']);
+
+            return Inertia::render('Manager/Dashboard', [
+                'users' => $users->map(fn ($user) => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'created_at' => $user->created_at?->toIso8601String(),
                 ]),
             ]);
         }
