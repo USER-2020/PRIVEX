@@ -57,13 +57,30 @@ class WebPushClient
             ];
         }
 
-        $payload = json_encode([
+        $payloadData = [
             'webpush' => true,
             'title' => $title,
             'body' => $body,
             'url' => $data['url'] ?? null,
             'data' => $data,
-        ]);
+        ];
+
+        $optionKeys = [
+            'icon' => true,
+            'badge' => true,
+            'tag' => true,
+            'renotify' => true,
+            'requireInteraction' => true,
+            'silent' => true,
+            'timestamp' => true,
+            'simple' => true,
+        ];
+        $extraOptions = array_intersect_key($data, $optionKeys);
+        if (! empty($extraOptions)) {
+            $payloadData = array_merge($payloadData, $extraOptions);
+        }
+
+        $payload = json_encode($payloadData);
 
         foreach ($subscriptions as $record) {
             $client->queueNotification(Subscription::create($record->subscription), $payload);

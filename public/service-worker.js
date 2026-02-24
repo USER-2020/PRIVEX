@@ -13,20 +13,28 @@ self.addEventListener("push", (event) => {
   if (!payload || payload.webpush !== true) return;
 
   const title = payload.title || "Notificacion";
-  const options = {
-    body: payload.body || "",
-    icon: payload.icon || "/icons/icon-192.png",
-    badge: payload.badge || "/icons/icon-192.png",
-    tag: payload.tag || "privexx-test",
-    renotify: payload.renotify ?? true,
-    requireInteraction: payload.requireInteraction ?? true,
-    silent: payload.silent ?? false,
-    timestamp: payload.timestamp || Date.now(),
-    data: {
-      ...(payload.data || {}),
-      url: payload.url || payload.data?.url || "/",
-    },
+  const baseData = {
+    ...(payload.data || {}),
+    url: payload.url || payload.data?.url || "/",
   };
+
+  const options = payload.simple
+    ? {
+        body: payload.body || "",
+        icon: payload.icon || "/icons/icon-192.png",
+        data: baseData,
+      }
+    : {
+        body: payload.body || "",
+        icon: payload.icon || "/icons/icon-192.png",
+        badge: payload.badge || "/icons/icon-192.png",
+        tag: payload.tag || "privexx-test",
+        renotify: payload.renotify ?? true,
+        requireInteraction: payload.requireInteraction ?? true,
+        silent: payload.silent ?? false,
+        timestamp: payload.timestamp || Date.now(),
+        data: baseData,
+      };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });

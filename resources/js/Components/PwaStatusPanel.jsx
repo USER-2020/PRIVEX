@@ -88,6 +88,50 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableN
     const iosSubTone =
         iosSubscriptionSent === true ? 'emerald' : iosSubscriptionSent === false ? 'rose' : 'slate';
 
+    const runPushTest = async (simple) => {
+        const targetChannel = pushChannels[0];
+        if (!targetChannel) return;
+        setTestStatus('sending');
+        setTestMessage('');
+        try {
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+            const response = await fetch('/push/test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrf,
+                },
+                body: JSON.stringify({
+                    channel: targetChannel,
+                    title: simple ? 'Test iOS simple' : 'Test iOS',
+                    body: 'Notificacion de prueba',
+                    url: '/chat',
+                    simple,
+                }),
+            });
+            const payload = await response.json().catch(() => null);
+            if (response.ok) {
+                const result = payload?.result;
+                if (result?.error) {
+                    setTestStatus('error');
+                    setTestMessage(result.error);
+                } else {
+                    setTestStatus('sent');
+                    setTestMessage(
+                        `sent:${result?.sent ?? 0} failed:${result?.failed ?? 0} expired:${result?.expired ?? 0}`
+                    );
+                }
+            } else {
+                setTestStatus('error');
+                setTestMessage('http_error');
+            }
+        } catch (error) {
+            setTestStatus('error');
+            setTestMessage('request_failed');
+        }
+    };
+
     return (
         <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-xs text-slate-200">
             <button
@@ -124,52 +168,17 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableN
                             </button>
                             <button
                                 type="button"
-                                onClick={async () => {
-                                    const targetChannel = pushChannels[0];
-                                    if (!targetChannel) return;
-                                    setTestStatus('sending');
-                                    setTestMessage('');
-                                    try {
-                                        const csrf =
-                                            document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
-                                        const response = await fetch('/push/test', {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'X-Requested-With': 'XMLHttpRequest',
-                                                'X-CSRF-TOKEN': csrf,
-                                            },
-                                            body: JSON.stringify({
-                                                channel: targetChannel,
-                                                title: 'Test iOS',
-                                                body: 'Notificacion de prueba',
-                                                url: '/chat',
-                                            }),
-                                        });
-                                        const payload = await response.json().catch(() => null);
-                                        if (response.ok) {
-                                            const result = payload?.result;
-                                            if (result?.error) {
-                                                setTestStatus('error');
-                                                setTestMessage(result.error);
-                                            } else {
-                                                setTestStatus('sent');
-                                                setTestMessage(
-                                                    `sent:${result?.sent ?? 0} failed:${result?.failed ?? 0} expired:${result?.expired ?? 0}`
-                                                );
-                                            }
-                                        } else {
-                                            setTestStatus('error');
-                                            setTestMessage('http_error');
-                                        }
-                                    } catch (error) {
-                                        setTestStatus('error');
-                                        setTestMessage('request_failed');
-                                    }
-                                }}
+                                onClick={() => runPushTest(false)}
                                 className="inline-flex items-center gap-2 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-4 py-1 text-[11px] font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
                             >
                                 Test push {testStatus === 'sending' ? '…' : testStatus === 'sent' ? 'ok' : testStatus === 'error' ? 'error' : ''}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => runPushTest(true)}
+                                className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-4 py-1 text-[11px] font-semibold text-amber-200 transition hover:bg-amber-500/20"
+                            >
+                                Test simple
                             </button>
                             <button
                                 type="button"
