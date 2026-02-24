@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import legacy from '@vitejs/plugin-legacy';
 import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 
@@ -11,7 +12,13 @@ export default defineConfig({
             refresh: true,
         }),
         tailwindcss(),
+        legacy({
+            targets: ['defaults', 'not IE 11', 'iOS >= 12'],
+        }),
     ],
+    build: {
+        target: 'es2017',
+    },
     server: {
         watch: {
             ignored: ['**/storage/framework/views/**'],
