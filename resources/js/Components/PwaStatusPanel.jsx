@@ -171,6 +171,19 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableN
                             >
                                 Test push {testStatus === 'sending' ? '…' : testStatus === 'sent' ? 'ok' : testStatus === 'error' ? 'error' : ''}
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!('Notification' in window)) return;
+                                    if (window.Notification.permission !== 'granted') return;
+                                    new Notification('Test local', {
+                                        body: 'Si esto sale, el sistema muestra notificaciones',
+                                    });
+                                }}
+                                className="inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500/10 px-4 py-1 text-[11px] font-semibold text-emerald-200 transition hover:bg-emerald-500/20"
+                            >
+                                Test local
+                            </button>
                         </div>
                     )}
                     {testMessage && (
