@@ -29,6 +29,7 @@ Route::post('/chat/request', [ChatRequestController::class, 'store'])->name('cha
 Route::get('/chat/public/{token}', [ChatController::class, 'showPublic'])->name('chat.public');
 Route::post('/chat/public/{token}/messages', [ChatMessageController::class, 'storePublic'])->name('chat.public.messages');
 Route::post('/push/subscribe', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
+Route::post('/push/test', [PushSubscriptionController::class, 'test'])->name('push.test');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');

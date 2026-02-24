@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PushSubscription;
+use App\Services\WebPushClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -35,6 +36,25 @@ class PushSubscriptionController extends Controller
                 'platform' => $platform,
                 'subscription' => $subscription,
             ]
+        );
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function test(Request $request, WebPushClient $webPush): JsonResponse
+    {
+        $data = $request->validate([
+            'channel' => ['required', 'string', 'max:200'],
+            'title' => ['nullable', 'string', 'max:120'],
+            'body' => ['nullable', 'string', 'max:500'],
+            'url' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $webPush->notifyChannel(
+            $data['channel'],
+            $data['title'] ?? 'Test iOS',
+            $data['body'] ?? 'Hola iOS',
+            ['url' => $data['url'] ?? '/']
         );
 
         return response()->json(['ok' => true]);

@@ -17,6 +17,7 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableN
     const [swScope, setSwScope] = useState('');
     const [echoState, setEchoState] = useState('unknown');
     const [notifPermission, setNotifPermission] = useState('unsupported');
+    const [testStatus, setTestStatus] = useState('idle');
 
     const ios = useMemo(() => isIos(), []);
     const standalone = useMemo(() => isStandalone(), []);
@@ -114,6 +115,38 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableN
                                 }`}
                             >
                                 Notificaciones {notifValue === 'granted' ? 'activas' : 'inactivas'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    const targetChannel = channels[0];
+                                    if (!targetChannel) return;
+                                    setTestStatus('sending');
+                                    try {
+                                        const csrf =
+                                            document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+                                        await fetch('/push/test', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-Requested-With': 'XMLHttpRequest',
+                                                'X-CSRF-TOKEN': csrf,
+                                            },
+                                            body: JSON.stringify({
+                                                channel: targetChannel,
+                                                title: 'Test iOS',
+                                                body: 'Notificacion de prueba',
+                                                url: '/chat',
+                                            }),
+                                        });
+                                        setTestStatus('sent');
+                                    } catch (error) {
+                                        setTestStatus('error');
+                                    }
+                                }}
+                                className="inline-flex items-center gap-2 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-4 py-1 text-[11px] font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
+                            >
+                                Test push {testStatus === 'sending' ? '…' : testStatus === 'sent' ? 'ok' : testStatus === 'error' ? 'error' : ''}
                             </button>
                         </div>
                     )}
