@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PushSubscription;
+use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 
@@ -95,6 +96,11 @@ class WebPushClient
                 $summary['failed']++;
             }
         }
+
+        Log::info('webpush.report', [
+            'channel' => $channel,
+            'summary' => $summary,
+        ]);
 
         return $summary;
     }
