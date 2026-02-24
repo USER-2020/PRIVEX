@@ -1,8 +1,9 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FiClock } from 'react-icons/fi';
+import { FiBell, FiClock } from 'react-icons/fi';
 import { Client as BeamsClient } from '@pusher/push-notifications-web';
 import PwaInstallBanner from '@/Components/PwaInstallBanner';
+import PwaStatusPanel from '@/Components/PwaStatusPanel';
 
 export default function Request() {
     const videoRef = useRef(null);
@@ -10,6 +11,7 @@ export default function Request() {
     const [stream, setStream] = useState(null);
     const [previewUrl, setPreviewUrl] = useState('');
     const [notifyHint, setNotifyHint] = useState('');
+    const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const { flash, token } = usePage().props;
     const { auth } = usePage().props;
 
@@ -25,7 +27,10 @@ export default function Request() {
 
     const startCamera = async () => {
         if (stream) return;
-        await enableNotifications();
+        if (!notificationsEnabled) {
+            setNotifyHint('Activa las notificaciones para continuar con la camara.');
+            return;
+        }
         const media = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'user' },
             audio: false,
@@ -89,9 +94,19 @@ export default function Request() {
         }
 
         if (window.Notification.permission === 'default') {
-            await window.Notification.requestPermission();
+            const result = await window.Notification.requestPermission();
+            setNotificationsEnabled(result === 'granted');
+            return;
         }
+
+        setNotificationsEnabled(window.Notification.permission === 'granted');
     };
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        if (!('Notification' in window)) return;
+        setNotificationsEnabled(window.Notification.permission === 'granted');
+    }, []);
 
     useEffect(() => {
         if (!token) return;
@@ -176,6 +191,9 @@ export default function Request() {
                                 Verificacion privada
                             </p>
                             <div className="mt-4">
+                                <PwaStatusPanel publicToken={token} userId={auth?.user?.id} />
+                            </div>
+                            <div className="mt-4">
                                 <PwaInstallBanner onEnableNotifications={enableNotifications} />
                             </div>
                             <h1 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">
@@ -213,7 +231,20 @@ export default function Request() {
                                     <div className="flex flex-wrap gap-3">
                                         <button
                                             type="button"
+                                            onClick={enableNotifications}
+                                            className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+                                                notificationsEnabled
+                                                    ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20'
+                                                    : 'border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20'
+                                            }`}
+                                        >
+                                            <FiBell className="h-4 w-4" />
+                                            {notificationsEnabled ? 'Notificaciones activas' : 'Notificaciones inactivas'}
+                                        </button>
+                                        <button
+                                            type="button"
                                             onClick={startCamera}
+                                            disabled={!notificationsEnabled}
                                             className="rounded-xl border border-cyan-500/50 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
                                         >
                                             Activar camara

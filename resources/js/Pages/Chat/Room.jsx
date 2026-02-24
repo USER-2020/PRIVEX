@@ -4,8 +4,9 @@ import { useForm } from '@inertiajs/react';
 import { Client as BeamsClient } from '@pusher/push-notifications-web';
 import Picker from '@emoji-mart/react';
 import emojiData from '@emoji-mart/data';
-import { FiMessageSquare } from 'react-icons/fi';
+import { FiBell, FiMessageSquare } from 'react-icons/fi';
 import PwaInstallBanner from '@/Components/PwaInstallBanner';
+import PwaStatusPanel from '@/Components/PwaStatusPanel';
 
 export default function Room({ chat, messages: initialMessages, isAdmin, viewer }) {
     const { auth } = usePage().props;
@@ -17,6 +18,7 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
     const bottomRef = useRef(null);
     const [chatStatus, setChatStatus] = useState(chat?.status ?? 'active');
     const [closingChat, setClosingChat] = useState(false);
+    const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const endsAt = chat?.ends_at ? new Date(chat.ends_at) : null;
     const { data, setData, processing, reset } = useForm({ body: '' });
 
@@ -25,12 +27,16 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
     const ensureNotifications = async () => {
         if (!('Notification' in window)) return;
         if (window.Notification.permission === 'default') {
-            await window.Notification.requestPermission();
+            const result = await window.Notification.requestPermission();
+            setNotificationsEnabled(result === 'granted');
+            return;
         }
+        setNotificationsEnabled(window.Notification.permission === 'granted');
     };
 
     useEffect(() => {
-        ensureNotifications();
+        if (typeof window === 'undefined' || !('Notification' in window)) return;
+        setNotificationsEnabled(window.Notification.permission === 'granted');
     }, []);
 
     useEffect(() => {
@@ -269,7 +275,22 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
             <Head title="Chat Activo" />
             <main className="min-h-screen bg-slate-950 px-4 py-12 text-slate-100 sm:px-8">
                 <div className="mx-auto w-full max-w-5xl rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60">
+                    <PwaStatusPanel publicToken={chat?.public_token} userId={auth?.user?.id} isAdmin={isAdmin} />
                     <PwaInstallBanner onEnableNotifications={ensureNotifications} />
+                    <div className="mt-4">
+                        <button
+                            type="button"
+                            onClick={ensureNotifications}
+                            className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-semibold transition ${
+                                notificationsEnabled
+                                    ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20'
+                                    : 'border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20'
+                            }`}
+                        >
+                            <FiBell className="h-4 w-4" />
+                            {notificationsEnabled ? 'Notificaciones activas' : 'Notificaciones inactivas'}
+                        </button>
+                    </div>
                     <header className="flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <h1 className="text-3xl font-semibold text-white">Chat Activo</h1>

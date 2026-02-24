@@ -33,7 +33,7 @@ class ChatApprovedAdmin implements ShouldBroadcastNow
         return [
             'chat_id' => $this->chat->id,
             'request_id' => $this->chat->chat_request_id,
-            'user_name' => $this->chat->user?->name ?? $this->chat->chatRequest?->display_name ?? 'Usuario',
+            'user_name' => $this->chat->chatRequest?->display_name ?? $this->chat->user?->name ?? 'Usuario',
             'ends_at' => $this->chat->ends_at?->toIso8601String(),
             'started_at' => $this->chat->started_at?->toIso8601String(),
         ];

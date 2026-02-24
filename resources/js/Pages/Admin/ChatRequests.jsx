@@ -1,8 +1,9 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import { Client as BeamsClient } from '@pusher/push-notifications-web';
-import { FiLogOut } from 'react-icons/fi';
+import { FiBell, FiLogOut } from 'react-icons/fi';
 import PwaInstallBanner from '@/Components/PwaInstallBanner';
+import PwaStatusPanel from '@/Components/PwaStatusPanel';
 
 export default function ChatRequests({ requests, activeChats }) {
     const { auth } = usePage().props;
@@ -59,16 +60,20 @@ export default function ChatRequests({ requests, activeChats }) {
         });
     };
 
-    const notificationsEnabled =
-        typeof window !== 'undefined' &&
-        'Notification' in window &&
-        window.Notification.permission === 'granted';
+    const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+    useEffect(() => {
+        if (typeof window === 'undefined' || !('Notification' in window)) return;
+        setNotificationsEnabled(window.Notification.permission === 'granted');
+    }, []);
 
     const enableNotifications = async () => {
         if (typeof window === 'undefined' || !('Notification' in window)) return;
         if (window.Notification.permission === 'default') {
-            await window.Notification.requestPermission();
+            const result = await window.Notification.requestPermission();
+            setNotificationsEnabled(result === 'granted');
+            return;
         }
+        setNotificationsEnabled(window.Notification.permission === 'granted');
     };
 
     const logout = (event) => {
@@ -179,14 +184,22 @@ export default function ChatRequests({ requests, activeChats }) {
                             Revisa las fotos frontales y aprueba antes de habilitar el chat por 24 horas.
                         </p>
                         <div className="mt-4">
+                            <PwaStatusPanel isAdmin userId={auth?.user?.id} />
+                        </div>
+                        <div className="mt-4">
                             <PwaInstallBanner onEnableNotifications={enableNotifications} />
                         </div>
                         <button
                             type="button"
                             onClick={enableNotifications}
-                            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-500/10 px-4 py-2 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
+                            className={`mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-semibold transition ${
+                                notificationsEnabled
+                                    ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20'
+                                    : 'border-rose-400/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20'
+                            }`}
                         >
-                            {notificationsEnabled ? 'Notificaciones activas' : 'Activar notificaciones'}
+                            <FiBell className="h-4 w-4" />
+                            {notificationsEnabled ? 'Notificaciones activas' : 'Notificaciones inactivas'}
                         </button>
                     </section>
 
