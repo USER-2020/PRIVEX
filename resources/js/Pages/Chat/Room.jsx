@@ -1,14 +1,9 @@
 import { Head, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from '@inertiajs/react';
-import { Client as BeamsClient } from '@pusher/push-notifications-web';
 import Picker from '@emoji-mart/react';
 import emojiData from '@emoji-mart/data';
 import { FiMessageSquare } from 'react-icons/fi';
-import PwaInstallBanner from '@/Components/PwaInstallBanner';
-import PwaStatusPanel from '@/Components/PwaStatusPanel';
-import { isIosPwa } from '@/utils/pwa';
-import { registerIosWebPush } from '@/push/iosWebPush';
 
 export default function Room({ chat, messages: initialMessages, isAdmin, viewer }) {
     const { auth } = usePage().props;
@@ -18,84 +13,12 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const emojiPickerRef = useRef(null);
     const bottomRef = useRef(null);
-    const beamsStartedRef = useRef(false);
     const [chatStatus, setChatStatus] = useState(chat?.status ?? 'active');
     const [closingChat, setClosingChat] = useState(false);
-    const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-    const [iosSubscriptionSent, setIosSubscriptionSent] = useState(null);
     const endsAt = chat?.ends_at ? new Date(chat.ends_at) : null;
     const { data, setData, processing, reset } = useForm({ body: '' });
 
     const canSend = useMemo(() => data.body.trim().length > 0 || !!attachment, [data.body, attachment]);
-
-    const ensureNotifications = async () => {
-        if (!('Notification' in window)) return;
-        if (window.Notification.permission === 'default') {
-            const result = await window.Notification.requestPermission();
-            setNotificationsEnabled(result === 'granted');
-            if (result === 'granted') {
-                await registerPlatformNotifications();
-            }
-            return;
-        }
-        setNotificationsEnabled(window.Notification.permission === 'granted');
-        if (window.Notification.permission === 'granted') {
-            await registerPlatformNotifications();
-        }
-    };
-
-    const registerPlatformNotifications = async () => {
-        if (isAdmin) return;
-        const channel = auth?.user?.id
-            ? `user-${auth.user.id}`
-            : chat?.public_token
-              ? `public-${chat.public_token}`
-              : null;
-        if (!channel) return;
-
-        if (isIosPwa()) {
-            const sent = await registerIosWebPush({
-                channel,
-                publicToken: chat?.public_token,
-                userId: auth?.user?.id,
-            });
-            setIosSubscriptionSent(sent);
-            return;
-        }
-
-        await startBeams();
-    };
-
-    const startBeams = async () => {
-        if (beamsStartedRef.current) return;
-        const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
-        if (!instanceId) return;
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-        if (isIosPwa()) return;
-
-        try {
-            const registration = await navigator.serviceWorker.ready;
-            const beams = new BeamsClient({
-                instanceId,
-                serviceWorkerRegistration: registration,
-            });
-            await beams.start();
-            if (!isAdmin && auth?.user?.id) {
-                await beams.addDeviceInterest(`user-${auth.user.id}`);
-            } else if (!isAdmin && chat?.public_token) {
-                await beams.addDeviceInterest(`public-${chat.public_token}`);
-            }
-            beamsStartedRef.current = true;
-        } catch (error) {
-            // Ignore unsupported browser errors.
-        }
-    };
-
-    useEffect(() => {
-        if (typeof window === 'undefined' || !('Notification' in window)) return;
-        setNotificationsEnabled(window.Notification.permission === 'granted');
-    }, []);
-
     useEffect(() => {
         const channelKey = chat?.public_token ?? chat?.id;
         if (!window.Echo || !channelKey) return;
@@ -179,27 +102,9 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }, [messages.length]);
-
-    useEffect(() => {
-        if (!auth?.user?.id || isAdmin) return;
-        if (typeof window === 'undefined' || !('Notification' in window)) return;
-        if (window.Notification.permission !== 'granted') return;
-        registerPlatformNotifications();
-    }, [auth?.user?.id]);
-
-    useEffect(() => {
-        if (isAdmin) return;
-        if (auth?.user?.id) return;
-        if (!chat?.public_token) return;
-        if (typeof window === 'undefined' || !('Notification' in window)) return;
-        if (window.Notification.permission !== 'granted') return;
-        registerPlatformNotifications();
-    }, [chat?.public_token, auth?.user?.id, isAdmin]);
-
     const sendMessage = async (event) => {
         event.preventDefault();
         if (!canSend) return;
-        ensureNotifications();
 
         const body = data.body.trim();
         setData('body', '');
@@ -311,15 +216,6 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
             <Head title="Chat Activo" />
             <main className="min-h-screen bg-slate-950 px-4 py-12 text-slate-100 sm:px-8">
                 <div className="mx-auto w-full max-w-5xl rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60">
-                    <PwaStatusPanel
-                        publicToken={chat?.public_token}
-                        userId={auth?.user?.id}
-                        isAdmin={isAdmin}
-                        onEnableNotifications={ensureNotifications}
-                        notifState={notificationsEnabled ? 'granted' : 'default'}
-                        iosSubscriptionSent={iosSubscriptionSent}
-                    />
-                    <PwaInstallBanner onEnableNotifications={ensureNotifications} />
                     <header className="flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <h1 className="text-3xl font-semibold text-white">Chat Activo</h1>
@@ -483,3 +379,4 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
         </>
     );
 }
+

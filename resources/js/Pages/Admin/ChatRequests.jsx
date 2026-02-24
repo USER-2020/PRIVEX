@@ -1,19 +1,12 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
-import { Client as BeamsClient } from '@pusher/push-notifications-web';
+import { useEffect, useState } from 'react';
 import { FiLogOut } from 'react-icons/fi';
-import PwaInstallBanner from '@/Components/PwaInstallBanner';
-import PwaStatusPanel from '@/Components/PwaStatusPanel';
-import { isIosPwa } from '@/utils/pwa';
-import { registerIosWebPush } from '@/push/iosWebPush';
 
 export default function ChatRequests({ requests, activeChats }) {
     const { auth } = usePage().props;
     const [items, setItems] = useState(requests || []);
     const [chats, setChats] = useState(activeChats || []);
     const [busy, setBusy] = useState({});
-    const [iosSubscriptionSent, setIosSubscriptionSent] = useState(null);
-    const beamsStartedRef = useRef(false);
     const { post, processing } = useForm({});
 
     const approve = (id) => {
@@ -62,54 +55,6 @@ export default function ChatRequests({ requests, activeChats }) {
                 });
             },
         });
-    };
-
-    const enableNotifications = async () => {
-        if (typeof window === 'undefined' || !('Notification' in window)) return;
-        if (window.Notification.permission === 'default') {
-            const result = await window.Notification.requestPermission();
-            if (result === 'granted') {
-                await registerPlatformNotifications();
-            }
-            return;
-        }
-        if (window.Notification.permission === 'granted') {
-            await registerPlatformNotifications();
-        }
-    };
-
-    const registerPlatformNotifications = async () => {
-        if (isIosPwa()) {
-            const sent = await registerIosWebPush({
-                channel: 'admin',
-                userId: auth?.user?.id,
-            });
-            setIosSubscriptionSent(sent);
-            return;
-        }
-
-        await startBeams();
-    };
-
-    const startBeams = async () => {
-        if (beamsStartedRef.current) return;
-        const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
-        if (!instanceId) return;
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-        if (isIosPwa()) return;
-
-        try {
-            const registration = await navigator.serviceWorker.ready;
-            const beams = new BeamsClient({
-                instanceId,
-                serviceWorkerRegistration: registration,
-            });
-            await beams.start();
-            await beams.addDeviceInterest('admin');
-            beamsStartedRef.current = true;
-        } catch (error) {
-            // Ignore unsupported browser errors.
-        }
     };
 
     const logout = (event) => {
@@ -165,13 +110,6 @@ export default function ChatRequests({ requests, activeChats }) {
         };
     }, []);
 
-    useEffect(() => {
-        if (!auth?.user?.id) return;
-        if (typeof window === 'undefined' || !('Notification' in window)) return;
-        if (window.Notification.permission !== 'granted') return;
-        registerPlatformNotifications();
-    }, [auth?.user?.id]);
-
     return (
         <>
             <Head title="Validacion de Fotos" />
@@ -209,18 +147,6 @@ export default function ChatRequests({ requests, activeChats }) {
                         <p className="text-sm text-slate-300">
                             Revisa las fotos frontales y aprueba antes de habilitar el chat por 24 horas.
                         </p>
-                        <div className="mt-4">
-                            <PwaStatusPanel
-                                isAdmin
-                                userId={auth?.user?.id}
-                                onEnableNotifications={enableNotifications}
-                                iosSubscriptionSent={iosSubscriptionSent}
-                            />
-                        </div>
-                        <div className="mt-4">
-                            <PwaInstallBanner onEnableNotifications={enableNotifications} />
-                        </div>
-                        
                     </section>
 
                     <section className="mb-10">

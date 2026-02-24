@@ -19,6 +19,5 @@
     </head>
     <body class="antialiased">
         @inertia
-        <script src="/pwa.js" defer></script>
     </body>
 </html>

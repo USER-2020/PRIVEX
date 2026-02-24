@@ -5,15 +5,16 @@ namespace App\Http\Controllers;
 use App\Events\ChatMessageSent;
 use App\Models\Chat;
 use App\Models\ChatMessage;
-use App\Services\BeamsClient;
-use App\Services\WebPushClient;
+use App\Models\User;
+use App\Notifications\ChatEventNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Notification;
 
 class ChatMessageController extends Controller
 {
-    public function store(Request $request, Chat $chat, BeamsClient $beams, WebPushClient $webPush): JsonResponse
+    public function store(Request $request, Chat $chat): JsonResponse
     {
         $user = $request->user();
         $isAdmin = method_exists($user, 'hasRole') && $user->hasRole('admin');
@@ -82,19 +83,29 @@ class ChatMessageController extends Controller
             ]);
         }
 
-        if ($chat->public_token) {
-            $beams->notifyInterest(
-                "public-{$chat->public_token}",
-                'Nuevo mensaje de PRIVEXX',
-                $message->body !== '' ? $message->body : 'Tienes un nuevo archivo.',
-                ['url' => url("/chat/public/{$chat->public_token}")]
-            );
-            $webPush->notifyChannel(
-                "public-{$chat->public_token}",
-                'Nuevo mensaje de PRIVEXX',
-                $message->body !== '' ? $message->body : 'Tienes un nuevo archivo.',
-                ['url' => url("/chat/public/{$chat->public_token}")]
-            );
+        $adminUrl = url("/admin/chat/{$chat->id}");
+        User::role('admin')->get()->each->notify(new ChatEventNotification(
+            'Nuevo mensaje',
+            'Hay nuevos mensajes en un chat.',
+            'Ver chat',
+            $adminUrl
+        ));
+
+        if ($chat->user) {
+            $userUrl = url('/chat');
+            $chat->user->notify(new ChatEventNotification(
+                'Nuevo mensaje',
+                'Hay nuevos mensajes en tu chat.',
+                'Abrir chat',
+                $userUrl
+            ));
+        } elseif ($chat->chatRequest?->email) {
+            Notification::route('mail', $chat->chatRequest->email)->notify(new ChatEventNotification(
+                'Nuevo mensaje',
+                'Hay nuevos mensajes en tu chat.',
+                'Abrir chat',
+                url("/chat/public/{$chat->public_token}")
+            ));
         }
 
         return response()->json([
@@ -112,7 +123,7 @@ class ChatMessageController extends Controller
         ]);
     }
 
-    public function storePublic(Request $request, string $token, BeamsClient $beams, WebPushClient $webPush): JsonResponse
+    public function storePublic(Request $request, string $token): JsonResponse
     {
         $chat = Chat::query()
             ->where('public_token', $token)
@@ -165,33 +176,30 @@ class ChatMessageController extends Controller
 
         broadcast(new ChatMessageSent($message))->toOthers();
 
-        if ($chat->user_id) {
-            $beams->notifyUser(
-                $chat->user_id,
-                'Nuevo mensaje',
-                $message->body !== '' ? $message->body : 'Tienes un nuevo archivo.',
-                ['url' => url('/chat')]
-            );
-            $webPush->notifyChannel(
-                "user-{$chat->user_id}",
-                'Nuevo mensaje',
-                $message->body !== '' ? $message->body : 'Tienes un nuevo archivo.',
-                ['url' => url('/chat')]
-            );
-        }
+        $adminUrl = url("/admin/chat/{$chat->id}");
+        User::role('admin')->get()->each->notify(new ChatEventNotification(
+            "Nuevo mensaje de {$senderName}",
+            'Hay nuevos mensajes en un chat.',
+            'Ver chat',
+            $adminUrl
+        ));
 
-        $beams->notifyInterest(
-            'admin',
-            "Nuevo mensaje de {$senderName}",
-            $message->body !== '' ? $message->body : 'Tienes un nuevo archivo.',
-            ['url' => url("/admin/chat/{$chat->id}")]
-        );
-        $webPush->notifyChannel(
-            'admin',
-            "Nuevo mensaje de {$senderName}",
-            $message->body !== '' ? $message->body : 'Tienes un nuevo archivo.',
-            ['url' => url("/admin/chat/{$chat->id}")]
-        );
+        if ($chat->user) {
+            $userUrl = url('/chat');
+            $chat->user->notify(new ChatEventNotification(
+                'Nuevo mensaje',
+                'Hay nuevos mensajes en tu chat.',
+                'Abrir chat',
+                $userUrl
+            ));
+        } elseif ($chat->chatRequest?->email) {
+            Notification::route('mail', $chat->chatRequest->email)->notify(new ChatEventNotification(
+                'Nuevo mensaje',
+                'Hay nuevos mensajes en tu chat.',
+                'Abrir chat',
+                url("/chat/public/{$chat->public_token}")
+            ));
+        }
 
         return response()->json([
             'id' => $message->id,

@@ -8,9 +8,10 @@ use App\Events\ChatApprovedPublic;
 use App\Events\ChatRequestSubmitted;
 use App\Models\Chat;
 use App\Models\ChatRequest;
+use App\Models\User;
 use App\Notifications\ChatApproved;
-use App\Services\BeamsClient;
-use App\Services\WebPushClient;
+use App\Notifications\ChatEventNotification;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -28,10 +29,11 @@ class ChatRequestController extends Controller
         ]);
     }
 
-    public function store(Request $request, BeamsClient $beams, WebPushClient $webPush): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'display_name' => ['required', 'string', 'max:80'],
+            'email' => ['required', 'email', 'max:120'],
             'photo' => ['required', 'image', 'max:4096'],
         ]);
 
@@ -40,6 +42,7 @@ class ChatRequestController extends Controller
         $chatRequest = ChatRequest::create([
             'user_id' => $request->user()?->id,
             'display_name' => $data['display_name'],
+            'email' => $data['email'],
             'photo_path' => $path,
             'public_token' => Str::uuid()->toString(),
             'status' => 'pending',
@@ -47,18 +50,12 @@ class ChatRequestController extends Controller
 
         broadcast(new ChatRequestSubmitted($chatRequest))->toOthers();
 
-        $beams->notifyInterest(
-            'admin',
+        User::role('admin')->get()->each->notify(new ChatEventNotification(
             'Nueva solicitud de chat',
-            "Solicitud de {$chatRequest->display_name}",
-            ['url' => url('/admin/chat-requests')]
-        );
-        $webPush->notifyChannel(
-            'admin',
-            'Nueva solicitud de chat',
-            "Solicitud de {$chatRequest->display_name}",
-            ['url' => url('/admin/chat-requests')]
-        );
+            'Hay una nueva solicitud de chat.',
+            'Ver solicitudes',
+            url('/admin/chat-requests')
+        ));
 
         return redirect()
             ->route('chat.request', ['token' => $chatRequest->public_token])
@@ -89,11 +86,11 @@ class ChatRequestController extends Controller
         ]);
     }
 
-    public function approve(ChatRequest $chatRequest, BeamsClient $beams, WebPushClient $webPush): RedirectResponse
+    public function approve(ChatRequest $chatRequest): RedirectResponse
     {
         $now = Carbon::now();
 
-        $chat = DB::transaction(function () use ($chatRequest, $now, $beams, $webPush) {
+        $chat = DB::transaction(function () use ($chatRequest, $now) {
             $chatRequest->update([
                 'status' => 'approved',
                 'approved_at' => $now,
@@ -112,34 +109,13 @@ class ChatRequestController extends Controller
 
             if ($chatRequest->user_id) {
                 $chatRequest->user?->notify(new ChatApproved($chat));
-
-                $beams->notifyUser(
-                    $chatRequest->user_id,
+            } elseif ($chatRequest->email) {
+                Notification::route('mail', $chatRequest->email)->notify(new ChatEventNotification(
                     'Chat aprobado',
                     'Tu solicitud fue aprobada. Ya puedes chatear.',
-                    ['url' => url('/chat')]
-                );
-                $webPush->notifyChannel(
-                    "user-{$chatRequest->user_id}",
-                    'Chat aprobado',
-                    'Tu solicitud fue aprobada. Ya puedes chatear.',
-                    ['url' => url('/chat')]
-                );
-            }
-
-            if ($chatRequest->public_token) {
-                $beams->notifyInterest(
-                    "public-{$chatRequest->public_token}",
-                    'Chat aprobado',
-                    'Tu solicitud fue aprobada. Ya puedes chatear.',
-                    ['url' => url("/chat/public/{$chatRequest->public_token}")]
-                );
-                $webPush->notifyChannel(
-                    "public-{$chatRequest->public_token}",
-                    'Chat aprobado',
-                    'Tu solicitud fue aprobada. Ya puedes chatear.',
-                    ['url' => url("/chat/public/{$chatRequest->public_token}")]
-                );
+                    'Entrar al chat',
+                    url("/chat/public/{$chatRequest->public_token}")
+                ));
             }
 
             return $chat;

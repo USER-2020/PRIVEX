@@ -14,6 +14,7 @@ class ChatRequest extends Model
     protected $fillable = [
         'user_id',
         'display_name',
+        'email',
         'photo_path',
         'photo_deleted_at',
         'public_token',

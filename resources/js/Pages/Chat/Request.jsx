@@ -1,35 +1,23 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FiClock } from 'react-icons/fi';
-import { Client as BeamsClient } from '@pusher/push-notifications-web';
-import PwaInstallBanner from '@/Components/PwaInstallBanner';
-import PwaStatusPanel from '@/Components/PwaStatusPanel';
-import { isIos, isIosPwa, isStandalone } from '@/utils/pwa';
-import { registerIosWebPush } from '@/push/iosWebPush';
 
 export default function Request() {
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
-    const beamsStartedRef = useRef(false);
     const [stream, setStream] = useState(null);
     const [previewUrl, setPreviewUrl] = useState('');
-    const [notifyHint, setNotifyHint] = useState('');
-    const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-    const [iosSubscriptionSent, setIosSubscriptionSent] = useState(null);
     const { flash, token } = usePage().props;
     const { auth } = usePage().props;
 
     const { data, setData, post, processing, errors, reset } = useForm({
         display_name: '',
+        email: '',
         photo: null,
     });
 
     const startCamera = async () => {
         if (stream) return;
-        if (!notificationsEnabled) {
-            setNotifyHint('Activa las notificaciones para continuar con la camara.');
-            return;
-        }
         const media = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'user' },
             audio: false,
@@ -70,7 +58,6 @@ export default function Request() {
 
     const submit = (event) => {
         event.preventDefault();
-        enableNotifications();
         post('/chat/request', {
             forceFormData: true,
             onSuccess: () => {
@@ -81,82 +68,6 @@ export default function Request() {
     };
 
     const hasPhoto = useMemo(() => Boolean(data.photo), [data.photo]);
-
-    const enableNotifications = async () => {
-        if (typeof window === 'undefined') return;
-        if (!('Notification' in window)) return;
-
-        if (isIos() && !isStandalone()) {
-            setNotifyHint('Para iOS debes instalar la app y abrirla desde el ícono para activar notificaciones.');
-            return;
-        }
-
-        if (window.Notification.permission === 'default') {
-            const result = await window.Notification.requestPermission();
-            setNotificationsEnabled(result === 'granted');
-            if (result === 'granted') {
-                await registerPlatformNotifications();
-            }
-            return;
-        }
-
-        setNotificationsEnabled(window.Notification.permission === 'granted');
-        if (window.Notification.permission === 'granted') {
-            await registerPlatformNotifications();
-        }
-    };
-
-    const registerPlatformNotifications = async () => {
-        const channel = token ? `public-${token}` : auth?.user?.id ? `user-${auth.user.id}` : null;
-        if (!channel) return;
-
-        if (isIosPwa()) {
-            const sent = await registerIosWebPush({
-                channel,
-                publicToken: token,
-                userId: auth?.user?.id,
-            });
-            setIosSubscriptionSent(sent);
-            return;
-        }
-
-        await startBeams();
-    };
-
-    const startBeams = async () => {
-        if (beamsStartedRef.current) return;
-        const instanceId = import.meta.env.VITE_BEAMS_INSTANCE_ID;
-        if (!instanceId || !token) return;
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-        if (isIosPwa()) return;
-
-        try {
-            const registration = await navigator.serviceWorker.ready;
-            const beams = new BeamsClient({
-                instanceId,
-                serviceWorkerRegistration: registration,
-            });
-            await beams.start();
-            await beams.addDeviceInterest(`public-${token}`);
-            beamsStartedRef.current = true;
-        } catch (error) {
-            // Ignore unsupported browser errors.
-        }
-    };
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        if (!('Notification' in window)) return;
-        setNotificationsEnabled(window.Notification.permission === 'granted');
-    }, []);
-
-    useEffect(() => {
-        if (!token) return;
-        if (typeof window === 'undefined' || !('Notification' in window)) return;
-        if (window.Notification.permission !== 'granted') return;
-        registerPlatformNotifications();
-    }, [token]);
-
     useEffect(() => {
         if (!window.Echo) return;
 
@@ -222,25 +133,9 @@ export default function Request() {
                             <p className="text-sm uppercase tracking-[0.22em] text-cyan-300/80">
                                 Verificacion privada
                             </p>
-                            <div className="mt-4">
-                                <PwaStatusPanel
-                                    publicToken={token}
-                                    userId={auth?.user?.id}
-                                    onEnableNotifications={enableNotifications}
-                                    notifState={notificationsEnabled ? 'granted' : 'default'}
-                                    iosSubscriptionSent={iosSubscriptionSent}
-                                />
-                            </div>
-                            <div className="mt-4">
-                                <PwaInstallBanner onEnableNotifications={enableNotifications} />
-                            </div>
                             <h1 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">
                                 Captura tu foto frontal y confirma tu nombre
                             </h1>
-                            <p className="mt-3 max-w-lg text-sm text-slate-300">
-                                Tu foto sera revisada por un administrador. El chat se habilita solo
-                                despues de la aprobacion y toda tu información se borra en 24 horas.
-                            </p>
 
                             {flash?.status && (
                                 <div className="mt-6 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
@@ -249,6 +144,10 @@ export default function Request() {
                             )}
 
                             <form onSubmit={submit} className="mt-8 space-y-5">
+                                <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
+                                    La informacion suministrada solo se usa para validar el chat y enviar avisos.
+                                    Los registros se eliminan automaticamente despues de 24 horas.
+                                </div>
                                 <div>
                                     <label className="mb-2 block text-sm font-medium text-slate-200">
                                         Nombre o apodo
@@ -264,13 +163,27 @@ export default function Request() {
                                         <p className="mt-1 text-xs text-rose-400">{errors.display_name}</p>
                                     )}
                                 </div>
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium text-slate-200">
+                                        Correo electronico
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={data.email}
+                                        onChange={(event) => setData('email', event.target.value)}
+                                        className="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 outline-none ring-cyan-400 transition focus:ring-2"
+                                        placeholder="tu@correo.com"
+                                    />
+                                    {errors.email && (
+                                        <p className="mt-1 text-xs text-rose-400">{errors.email}</p>
+                                    )}
+                                </div>
 
                                 <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
                                     <div className="flex flex-wrap gap-3">
                                         <button
                                             type="button"
                                             onClick={startCamera}
-                                            disabled={!notificationsEnabled}
                                             className="rounded-xl border border-cyan-500/50 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
                                         >
                                             Activar camara
@@ -290,12 +203,6 @@ export default function Request() {
                                             Apagar camara
                                         </button>
                                     </div>
-                                    {notifyHint && (
-                                        <div className="mt-3 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                                            {notifyHint}
-                                        </div>
-                                    )}
-
                                     <div className="mt-4 grid gap-4 sm:grid-cols-2">
                                         <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
                                             <video
@@ -352,3 +259,6 @@ export default function Request() {
         </>
     );
 }
+
+
+

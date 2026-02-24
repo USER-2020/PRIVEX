@@ -42,15 +42,4 @@ return [
         'cluster' => env('PUSHER_APP_CLUSTER'),
     ],
 
-    'beams' => [
-        'instance_id' => env('BEAMS_INSTANCE_ID'),
-        'secret_key' => env('BEAMS_SECRET_KEY'),
-    ],
-
-    'webpush' => [
-        'public_key' => env('VAPID_PUBLIC_KEY'),
-        'private_key' => env('VAPID_PRIVATE_KEY'),
-        'subject' => env('VAPID_SUBJECT'),
-    ],
-
 ];
