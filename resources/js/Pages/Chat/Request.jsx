@@ -9,6 +9,7 @@ export default function Request() {
     const canvasRef = useRef(null);
     const [stream, setStream] = useState(null);
     const [previewUrl, setPreviewUrl] = useState('');
+    const [notifyHint, setNotifyHint] = useState('');
     const { flash, token } = usePage().props;
     const { auth } = usePage().props;
 
@@ -16,6 +17,11 @@ export default function Request() {
         display_name: '',
         photo: null,
     });
+
+    const isStandalone = () => {
+        if (typeof window === 'undefined') return false;
+        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    };
 
     const startCamera = async () => {
         if (stream) return;
@@ -73,7 +79,15 @@ export default function Request() {
     const hasPhoto = useMemo(() => Boolean(data.photo), [data.photo]);
 
     const enableNotifications = async () => {
+        if (typeof window === 'undefined') return;
         if (!('Notification' in window)) return;
+
+        const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+        if (isIOS && !isStandalone()) {
+            setNotifyHint('Para iOS debes instalar la app y abrirla desde el ícono para activar notificaciones.');
+            return;
+        }
+
         if (window.Notification.permission === 'default') {
             await window.Notification.requestPermission();
         }
@@ -219,6 +233,11 @@ export default function Request() {
                                             Apagar camara
                                         </button>
                                     </div>
+                                    {notifyHint && (
+                                        <div className="mt-3 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                                            {notifyHint}
+                                        </div>
+                                    )}
 
                                     <div className="mt-4 grid gap-4 sm:grid-cols-2">
                                         <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
