@@ -12,6 +12,7 @@ export default function ChatRequests({ requests, activeChats }) {
     const [items, setItems] = useState(requests || []);
     const [chats, setChats] = useState(activeChats || []);
     const [busy, setBusy] = useState({});
+    const [iosSubscriptionSent, setIosSubscriptionSent] = useState(null);
     const beamsStartedRef = useRef(false);
     const { post, processing } = useForm({});
 
@@ -79,10 +80,11 @@ export default function ChatRequests({ requests, activeChats }) {
 
     const registerPlatformNotifications = async () => {
         if (isIosPwa()) {
-            await registerIosWebPush({
+            const sent = await registerIosWebPush({
                 channel: 'admin',
                 userId: auth?.user?.id,
             });
+            setIosSubscriptionSent(sent);
             return;
         }
 
@@ -208,7 +210,12 @@ export default function ChatRequests({ requests, activeChats }) {
                             Revisa las fotos frontales y aprueba antes de habilitar el chat por 24 horas.
                         </p>
                         <div className="mt-4">
-                            <PwaStatusPanel isAdmin userId={auth?.user?.id} onEnableNotifications={enableNotifications} />
+                            <PwaStatusPanel
+                                isAdmin
+                                userId={auth?.user?.id}
+                                onEnableNotifications={enableNotifications}
+                                iosSubscriptionSent={iosSubscriptionSent}
+                            />
                         </div>
                         <div className="mt-4">
                             <PwaInstallBanner onEnableNotifications={enableNotifications} />

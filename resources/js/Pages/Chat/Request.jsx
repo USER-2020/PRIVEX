@@ -15,6 +15,7 @@ export default function Request() {
     const [previewUrl, setPreviewUrl] = useState('');
     const [notifyHint, setNotifyHint] = useState('');
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+    const [iosSubscriptionSent, setIosSubscriptionSent] = useState(null);
     const { flash, token } = usePage().props;
     const { auth } = usePage().props;
 
@@ -110,11 +111,12 @@ export default function Request() {
         if (!channel) return;
 
         if (isIosPwa()) {
-            await registerIosWebPush({
+            const sent = await registerIosWebPush({
                 channel,
                 publicToken: token,
                 userId: auth?.user?.id,
             });
+            setIosSubscriptionSent(sent);
             return;
         }
 
@@ -226,6 +228,7 @@ export default function Request() {
                                     userId={auth?.user?.id}
                                     onEnableNotifications={enableNotifications}
                                     notifState={notificationsEnabled ? 'granted' : 'default'}
+                                    iosSubscriptionSent={iosSubscriptionSent}
                                 />
                             </div>
                             <div className="mt-4">

@@ -11,7 +11,7 @@ const isIos = () => {
     return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
 };
 
-export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableNotifications, notifState }) {
+export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableNotifications, notifState, iosSubscriptionSent }) {
     const [open, setOpen] = useState(false);
     const [swReady, setSwReady] = useState(false);
     const [swScope, setSwScope] = useState('');
@@ -76,6 +76,10 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableN
     const notifValue = notifState ?? notifPermission;
     const notifTone =
         notifValue === 'granted' ? 'emerald' : notifValue === 'denied' ? 'rose' : 'amber';
+    const iosSubValue =
+        iosSubscriptionSent === true ? 'enviada' : iosSubscriptionSent === false ? 'no' : 'n/a';
+    const iosSubTone =
+        iosSubscriptionSent === true ? 'emerald' : iosSubscriptionSent === false ? 'rose' : 'slate';
 
     return (
         <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-xs text-slate-200">
@@ -95,6 +99,7 @@ export default function PwaStatusPanel({ userId, publicToken, isAdmin, onEnableN
                         <Badge label="Standalone" value={standalone ? 'si' : 'no'} tone={standalone ? 'emerald' : 'amber'} />
                         <Badge label="Notificaciones" value={notifValue} tone={notifTone} />
                         <Badge label="Service Worker" value={swReady ? 'listo' : 'no'} tone={swReady ? 'emerald' : 'rose'} />
+                        <Badge label="Suscripcion iOS" value={iosSubValue} tone={iosSubTone} />
                         <Badge label="Echo/Pusher" value={echoState} tone={echoState === 'connected' ? 'emerald' : 'amber'} />
                     </div>
                     {onEnableNotifications && (

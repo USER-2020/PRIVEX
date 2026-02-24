@@ -22,6 +22,7 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
     const [chatStatus, setChatStatus] = useState(chat?.status ?? 'active');
     const [closingChat, setClosingChat] = useState(false);
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+    const [iosSubscriptionSent, setIosSubscriptionSent] = useState(null);
     const endsAt = chat?.ends_at ? new Date(chat.ends_at) : null;
     const { data, setData, processing, reset } = useForm({ body: '' });
 
@@ -53,11 +54,12 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
         if (!channel) return;
 
         if (isIosPwa()) {
-            await registerIosWebPush({
+            const sent = await registerIosWebPush({
                 channel,
                 publicToken: chat?.public_token,
                 userId: auth?.user?.id,
             });
+            setIosSubscriptionSent(sent);
             return;
         }
 
@@ -315,6 +317,7 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
                         isAdmin={isAdmin}
                         onEnableNotifications={ensureNotifications}
                         notifState={notificationsEnabled ? 'granted' : 'default'}
+                        iosSubscriptionSent={iosSubscriptionSent}
                     />
                     <PwaInstallBanner onEnableNotifications={ensureNotifications} />
                     <header className="flex flex-wrap items-center justify-between gap-4">
