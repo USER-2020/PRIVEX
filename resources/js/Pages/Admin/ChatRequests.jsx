@@ -18,7 +18,7 @@ export default function ChatRequests({ requests, activeChats }) {
                 setBusy((prev) => {
                     const next = { ...prev };
                     delete next[`approve-${id}`];
-                    return next;
+                    return next; 
                 });
             },
         });
