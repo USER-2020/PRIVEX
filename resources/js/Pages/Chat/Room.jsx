@@ -214,9 +214,9 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
     return (
         <>
             <Head title="Chat Activo" />
-            <main className="min-h-screen bg-slate-950 px-4 py-12 text-slate-100 sm:px-8">
-                <div className="mx-auto w-full max-w-5xl rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-2xl shadow-slate-950/60">
-                    <header className="flex flex-wrap items-center justify-between gap-4">
+            <main className="min-h-screen bg-slate-950 text-slate-100 sm:px-8 sm:py-12">
+                <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col bg-slate-950/70 sm:min-h-0 sm:rounded-3xl sm:border sm:border-slate-800 sm:bg-slate-900/70 sm:p-8 sm:shadow-2xl sm:shadow-slate-950/60">
+                    <header className="px-4 pt-6 sm:px-0 sm:pt-0 flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <h1 className="text-3xl font-semibold text-white">Chat Activo</h1>
                             <p className="mt-2 text-sm text-slate-300">
@@ -250,8 +250,8 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
                         )}
                     </header>
 
-                    <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60">
-                        <div className="max-h-[420px] space-y-4 overflow-y-auto px-6 py-6">
+                    <div className="mt-6 flex min-h-0 flex-1 flex-col rounded-none border-y border-slate-800 bg-slate-950/60 sm:mt-8 sm:rounded-3xl sm:border sm:border-slate-800">
+                        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-6 sm:px-6">
                             {messages.length === 0 ? (
                                 <div className="rounded-2xl border border-dashed border-slate-800 p-6 text-center text-sm text-slate-400">
                                     Aun no hay mensajes. Saluda para iniciar la conversacion.
@@ -292,7 +292,7 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
                             )}
                             <div ref={bottomRef} />
                         </div>
-                        <form onSubmit={sendMessage} className="border-t border-slate-800 px-6 py-4">
+                        <form onSubmit={sendMessage} className="border-t border-slate-800 px-4 py-4 sm:px-6">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                                 <div className="relative flex w-full items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2">
                                     <label className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-slate-700 bg-slate-950/60 text-slate-200 transition hover:border-cyan-400/60">
