@@ -331,7 +331,7 @@ export default function Room({ chat, messages: initialMessages, isAdmin, viewer 
                                         value={data.body}
                                         onChange={(event) => setData('body', event.target.value)}
                                         placeholder="Escribe un mensaje..."
-                                        className="flex-1 bg-transparent px-1 py-2 text-sm text-slate-100 outline-none"
+                                        className="flex-1 bg-transparent px-1 py-2 text-base text-slate-100 outline-none sm:text-sm"
                                     />
                                     {showEmojiPicker && (
                                         <div
